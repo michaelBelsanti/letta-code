@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -14,10 +15,14 @@ function getRipgrepPath(): string {
     const __filename = fileURLToPath(import.meta.url);
     const require = createRequire(__filename);
     const rgPackage = require("@vscode/ripgrep");
-    return rgPackage.rgPath;
-  } catch (_error) {
-    return "rg";
+    const bundledPath = rgPackage.rgPath as string;
+    if (bundledPath && existsSync(bundledPath)) {
+      return bundledPath;
+    }
+  } catch {
+    // @vscode/ripgrep not installed
   }
+  return "rg";
 }
 
 const rgPath = getRipgrepPath();

@@ -4,7 +4,7 @@
  * including bundled tools like ripgrep in PATH and Letta context for skill scripts.
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
@@ -17,18 +17,21 @@ import { settingsManager } from "../../settings-manager";
 
 /**
  * Get the directory containing the bundled ripgrep binary.
- * Returns undefined if @vscode/ripgrep is not installed.
+ * Returns undefined if the bundled binary doesn't exist (e.g. Nix packages).
  */
 function getRipgrepBinDir(): string | undefined {
   try {
     const __filename = fileURLToPath(import.meta.url);
     const require = createRequire(__filename);
     const rgPackage = require("@vscode/ripgrep");
-    // rgPath is the full path to the binary, we want the directory
-    return path.dirname(rgPackage.rgPath);
-  } catch (_error) {
-    return undefined;
+    const bundledPath = rgPackage.rgPath as string;
+    if (bundledPath && existsSync(bundledPath)) {
+      return path.dirname(bundledPath);
+    }
+  } catch {
+    // @vscode/ripgrep not installed
   }
+  return undefined;
 }
 
 /**
