@@ -2,6 +2,7 @@ import type { SkillSource } from "./skills";
 
 export const ALL_SKILL_SOURCES: SkillSource[] = [
   "bundled",
+  "shared",
   "global",
   "agent",
   "project",

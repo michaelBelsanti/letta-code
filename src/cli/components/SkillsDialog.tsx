@@ -11,12 +11,13 @@ const VISIBLE_ITEMS = 5;
 
 type SkillTab = SkillSource;
 
-const TAB_ORDER: SkillTab[] = ["project", "agent", "global", "bundled"];
+const TAB_ORDER: SkillTab[] = ["project", "agent", "global", "shared", "bundled"];
 
 const TAB_LABELS: Record<SkillTab, string> = {
   project: "Project",
   agent: "Agent",
   global: "Global",
+  shared: "Shared",
   bundled: "Bundled",
 };
 
@@ -29,6 +30,8 @@ function getTabDescription(tab: SkillTab, agentId: string): string {
       return `~/.letta/agents/${shortId}/skills/`;
     case "global":
       return "~/.letta/skills/";
+    case "shared":
+      return "~/.config/agents/skills/";
     case "bundled":
       return "Built-in skills shipped with Letta Code";
   }
@@ -204,7 +207,7 @@ export function SkillsDialog({ onClose, agentId }: SkillsDialogProps) {
         {!loading && skills.length === 0 && (
           <Box flexDirection="column" paddingLeft={2}>
             <Text dimColor>No skills found</Text>
-            <Text dimColor>Create skills in .skills/ or ~/.letta/skills/</Text>
+            <Text dimColor>Create skills in .skills/, ~/.letta/skills/, or ~/.config/agents/skills/</Text>
           </Box>
         )}
 

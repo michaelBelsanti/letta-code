@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
-import { getLettaHomeSubdir } from "../utils/lettaHome.js";
+import { getLettaHomeSubdir, getSharedAgentsDir } from "../utils/lettaHome.js";
 import { getAgentSkillsDir } from "./skills";
 
 export interface SkillSchema {
@@ -29,6 +29,7 @@ export async function packageSkills(
         agentId && getAgentSkillsDir(agentId),
         resolve(process.cwd(), ".skills"), // Project-local
         getLettaHomeSubdir("skills"), // Global
+        resolve(getSharedAgentsDir(), "skills"), // Shared (cross-harness)
       ].filter((dir): dir is string => Boolean(dir));
 
   for (const baseDir of dirsToCheck) {

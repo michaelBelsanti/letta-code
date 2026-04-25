@@ -7,6 +7,7 @@ import {
   GLOBAL_SKILLS_DIR,
   getAgentSkillsDir,
   getBundledSkills,
+  getSharedSkillsDir,
   SKILLS_DIR,
 } from "../../agent/skills";
 import { getCurrentWorkingDirectory } from "../../runtime-context";
@@ -69,10 +70,11 @@ function hasAdditionalFiles(skillMdPath: string): boolean {
  *
  * Search order (highest priority first):
  * 1. Project skills (.skills/)
- * 2. Agent skills (~/.letta/agents/{id}/skills/)
- * 3. Agent memory skills ($MEMORY_DIR/skills/ or ~/.letta/agents/{id}/memory/skills/)
- * 4. Global skills (~/.letta/skills/)
- * 5. Bundled skills
+ * 2. Agent skills (<letta-home>/agents/{id}/skills/)
+ * 3. Agent memory skills ($MEMORY_DIR/skills/ or <letta-home>/agents/{id}/memory/skills/)
+ * 4. Global skills (<letta-home>/skills/)
+ * 5. Shared skills ($XDG_CONFIG_HOME/agents/skills/ — cross-harness)
+ * 6. Bundled skills
  */
 async function readSkillContent(
   skillId: string,
@@ -123,7 +125,16 @@ async function readSkillContent(
     // Not in global, continue
   }
 
-  // 5. Try bundled skills (lowest priority)
+  // 5. Try shared skills directory ($XDG_CONFIG_HOME/agents/skills/)
+  const sharedSkillPath = join(getSharedSkillsDir(), skillId, "SKILL.md");
+  try {
+    const content = await readFile(sharedSkillPath, "utf-8");
+    return { content, path: sharedSkillPath };
+  } catch {
+    // Not in shared, continue
+  }
+
+  // 6. Try bundled skills (lowest priority)
   const bundledSkills = await getBundledSkills();
   const bundledSkill = bundledSkills.find((s) => s.id === skillId);
   if (bundledSkill?.path) {

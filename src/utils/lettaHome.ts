@@ -61,6 +61,19 @@ export function getLettaHomeSubdir(...segments: string[]): string {
 }
 
 /**
+ * Get the shared agents config directory for cross-harness interoperability.
+ * Location: $XDG_CONFIG_HOME/agents/ (or ~/.config/agents/)
+ *
+ * This is a standard location that multiple AI harnesses can read from.
+ * Subdirectories: skills/, mcps/
+ */
+export function getSharedAgentsDir(): string {
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME?.trim();
+  const configHome = xdgConfigHome || join(process.env.HOME || process.env.USERPROFILE || homedir(), ".config");
+  return join(configHome, "agents");
+}
+
+/**
  * Reset the cached home directory. Useful for tests.
  */
 export function resetLettaHomeCache(): void {

@@ -3,9 +3,10 @@
  *
  * Skills are discovered from four sources (in order of priority):
  * 1. Project skills: .skills/ in current directory (highest priority - overrides)
- * 2. Agent skills: ~/.letta/agents/{agent-id}/skills/ for agent-specific skills
- * 3. Global skills: ~/.letta/skills/ for user's personal skills
- * 4. Bundled skills: embedded in package (lowest priority - defaults)
+ * 2. Agent skills (<letta-home>/agents/{agent-id}/skills/)
+ * 3. Global skills (<letta-home>/skills/)
+ * 4. Shared skills ($XDG_CONFIG_HOME/agents/skills/ — cross-harness)
+ * 5. Bundled skills (embedded in package)
  */
 
 import { existsSync } from "node:fs";
@@ -13,7 +14,7 @@ import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFrontmatter } from "../utils/frontmatter";
-import { getLettaHomeSubdir } from "../utils/lettaHome.js";
+import { getLettaHomeSubdir, getSharedAgentsDir } from "../utils/lettaHome.js";
 import { ALL_SKILL_SOURCES } from "./skillSources";
 
 /**
@@ -37,7 +38,7 @@ function getBundledSkillsPath(): string {
 /**
  * Source of a skill (for display and override resolution)
  */
-export type SkillSource = "bundled" | "global" | "agent" | "project";
+export type SkillSource = "bundled" | "shared" | "global" | "agent" | "project";
 
 /**
  * Represents a skill that can be used by the agent
@@ -103,6 +104,15 @@ export const SKILLS_DIR = ".skills";
  * Global skills directory (in user's Letta home directory)
  */
 export const GLOBAL_SKILLS_DIR = getLettaHomeSubdir("skills");
+
+/**
+ * Shared skills directory for cross-harness interoperability.
+ * Location: $XDG_CONFIG_HOME/agents/skills/ (or ~/.config/agents/skills/)
+ * This is a standard location that multiple AI harnesses can read from.
+ */
+export function getSharedSkillsDir(): string {
+  return join(getSharedAgentsDir(), "skills");
+}
 
 /**
  * Get the agent-scoped skills directory for a specific agent
@@ -189,7 +199,19 @@ export async function discoverSkills(
     }
   }
 
-  // 2. Add global skills (override bundled)
+  // 2. Add shared skills from $XDG_CONFIG_HOME/agents/skills/ (cross-harness)
+  if (includeSource("shared")) {
+    const sharedResult = await discoverSkillsFromDir(
+      getSharedSkillsDir(),
+      "shared",
+    );
+    allErrors.push(...sharedResult.errors);
+    for (const skill of sharedResult.skills) {
+      skillsById.set(skill.id, skill);
+    }
+  }
+
+  // 3. Add global skills (override shared)
   if (includeSource("global")) {
     const globalResult = await discoverSkillsFromDir(
       GLOBAL_SKILLS_DIR,
@@ -201,7 +223,7 @@ export async function discoverSkills(
     }
   }
 
-  // 3. Add agent skills if agentId provided (override global)
+  // 4. Add agent skills if agentId provided (override global)
   if (agentId && includeSource("agent")) {
     const agentSkillsDir = getAgentSkillsDir(agentId);
     const agentResult = await discoverSkillsFromDir(agentSkillsDir, "agent");
@@ -211,7 +233,7 @@ export async function discoverSkills(
     }
   }
 
-  // 4. Add project skills (override all - highest priority)
+  // 5. Add project skills (override all - highest priority)
   if (includeSource("project")) {
     const projectResult = await discoverSkillsFromDir(
       projectSkillsPath,

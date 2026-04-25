@@ -3,7 +3,7 @@
 
 import { homedir } from "node:os";
 import { dirname, relative, resolve, win32 } from "node:path";
-import { getLettaHome } from "../utils/lettaHome.js";
+import { getLettaHome, getSharedAgentsDir } from "../utils/lettaHome.js";
 import { canonicalToolName, isFileToolName } from "./canonical";
 import {
   isReadOnlyShellCommand,
@@ -531,6 +531,16 @@ function detectSkillScript(
   const globalSkill = detect("global", globalRegex);
   if (globalSkill) {
     return globalSkill;
+  }
+
+  // Shared skills from $XDG_CONFIG_HOME/agents/skills/
+  const normalizedSharedDir = getSharedAgentsDir().replace(/\\/g, "/").replace(/\/+$/, "");
+  const sharedRegex = new RegExp(
+    `^${escapeRegex(normalizedSharedDir)}/skills/(.+?)/scripts/`,
+  );
+  const sharedSkill = detect("shared", sharedRegex);
+  if (sharedSkill) {
+    return sharedSkill;
   }
 
   const bundledSkill = detect(
