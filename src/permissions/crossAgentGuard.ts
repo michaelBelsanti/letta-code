@@ -14,6 +14,7 @@
 import { homedir } from "node:os";
 import { canonicalToolName, isShellToolName } from "./canonical";
 import { cliPermissions } from "./cli";
+import { getLettaHome } from "../utils/lettaHome.js";
 import {
   deriveAgentId,
   normalizeScopedPath,
@@ -107,8 +108,8 @@ function escapeRegex(value: string): string {
  * normalized (forward slashes, no trailing slash).
  */
 function getAgentsTreeRoot(homeDir: string): string {
-  const normalizedHome = homeDir.replace(/\\/g, "/").replace(/\/+$/, "");
-  return `${normalizedHome}/.letta/agents`;
+  const normalizedHome = getLettaHome().replace(/\\/g, "/").replace(/\/+$/, "");
+  return `${normalizedHome}/agents`;
 }
 
 /**

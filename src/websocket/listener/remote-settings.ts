@@ -7,9 +7,9 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
 import type { PermissionMode } from "../../permissions/mode";
+import { getLettaHomeSubdir } from "../../utils/lettaHome.js";
 
 /**
  * Persisted permission mode state for a single conversation.
@@ -30,7 +30,7 @@ export interface RemoteSettings {
 let _cache: RemoteSettings | null = null;
 
 export function getRemoteSettingsPath(): string {
-  return path.join(homedir(), ".letta", "remote-settings.json");
+  return getLettaHomeSubdir("remote-settings.json");
 }
 
 /**
@@ -113,7 +113,7 @@ export function resetRemoteSettingsCache(): void {
  */
 function loadLegacyCwdCache(): Record<string, string> {
   try {
-    const legacyPath = path.join(homedir(), ".letta", "cwd-cache.json");
+    const legacyPath = getLettaHomeSubdir("cwd-cache.json");
     if (!existsSync(legacyPath)) return {};
     const raw = readFileSync(legacyPath, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;

@@ -4,6 +4,7 @@ import { exists, readFile, writeFile } from "../utils/fs.js";
 
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHome } from "../utils/lettaHome.js";
 import {
   normalizePermissionRule,
   permissionRulesEquivalent,
@@ -25,14 +26,10 @@ export function getUserSettingsPaths(options: UserSettingsPathsOptions = {}): {
   legacy: string;
 } {
   const homeDir = options.homeDir || homedir();
-  const xdgConfigHome =
-    options.xdgConfigHome ||
-    process.env.XDG_CONFIG_HOME ||
-    join(homeDir, ".config");
 
   return {
-    canonical: join(homeDir, ".letta", "settings.json"),
-    legacy: join(xdgConfigHome, "letta", "settings.json"),
+    canonical: join(getLettaHome(), "settings.json"),
+    legacy: join(homeDir, ".letta", "settings.json"),
   };
 }
 

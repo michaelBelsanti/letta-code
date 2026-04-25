@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { getLettaHomeSubdir } from "./lettaHome.js";
 
-export const LETTA_SETTINGS_PATH = join(homedir(), ".letta", ".lettasettings");
+export const LETTA_SETTINGS_PATH = getLettaHomeSubdir(".lettasettings");
 
 /**
  * Default contents written to ~/.letta/.lettasettings on first run.

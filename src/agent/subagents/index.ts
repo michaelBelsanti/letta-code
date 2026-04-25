@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getErrorMessage } from "../../utils/error";
+import { getLettaHomeSubdir } from "../../utils/lettaHome.js";
 import {
   getStringField,
   parseCommaSeparatedList,
@@ -92,12 +93,9 @@ export interface SubagentDiscoveryResult {
 export const AGENTS_DIR = ".letta/agents";
 
 /**
- * Global directory for subagent files (in user's home directory)
+ * Global directory for subagent files (in user's Letta home directory)
  */
-export const GLOBAL_AGENTS_DIR = join(
-  process.env.HOME || process.env.USERPROFILE || "~",
-  ".letta/agents",
-);
+export const GLOBAL_AGENTS_DIR = getLettaHomeSubdir("agents");
 
 /**
  * Valid memory block labels (derived from memory.ts)

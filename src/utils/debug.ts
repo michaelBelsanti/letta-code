@@ -15,8 +15,8 @@ import {
   readFileSync,
   unlinkSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "./lettaHome.js";
 import { format } from "node:util";
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ function printDebugLine(line: string, level: "log" | "warn" = "log"): void {
 // Always-on debug log file
 // ---------------------------------------------------------------------------
 
-const DEBUG_LOG_DIR = join(homedir(), ".letta", "logs", "debug");
+const DEBUG_LOG_DIR = getLettaHomeSubdir("logs", "debug");
 const MAX_SESSION_FILES = 5;
 const DEFAULT_TAIL_LINES = 50;
 

@@ -6,8 +6,8 @@ import {
   readFile,
   writeFile,
 } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "../../utils/lettaHome.js";
 import { MEMORY_SYSTEM_DIR } from "../../agent/memoryFilesystem";
 import { getDirectoryLimits } from "../../utils/directoryLimits";
 import { parseFrontmatter } from "../../utils/frontmatter";
@@ -336,7 +336,7 @@ function getTranscriptRoot(): string {
   if (envRoot) {
     return envRoot;
   }
-  return join(homedir(), ".letta", DEFAULT_TRANSCRIPT_DIR);
+  return getLettaHomeSubdir(DEFAULT_TRANSCRIPT_DIR);
 }
 
 function defaultState(): ReflectionTranscriptState {

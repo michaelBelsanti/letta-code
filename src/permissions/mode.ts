@@ -2,6 +2,7 @@
 // Permission mode management (default, acceptEdits, plan, memory, bypassPermissions)
 
 import { homedir } from "node:os";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 import { isAbsolute, join, relative } from "node:path";
 import { canonicalToolName } from "./canonical";
 import { extractApplyPatchPaths } from "./crossAgentGuard";
@@ -366,7 +367,7 @@ class PermissionModeManager {
         // This is intentional - it allows the agent to "resume" planning after
         // plan mode was exited/reset by simply writing to any plan file.
         if (writeTools.includes(toolName)) {
-          const plansDir = join(homedir(), ".letta", "plans");
+          const plansDir = getLettaHomeSubdir("plans");
           const targetPath =
             (toolArgs?.file_path as string) || (toolArgs?.path as string);
           let candidatePaths: string[] = [];
@@ -447,7 +448,7 @@ class PermissionModeManager {
           const planWritePath =
             extractPlanFileWritePathFromShellCommand(command);
           if (planWritePath) {
-            const plansDir = join(homedir(), ".letta", "plans");
+            const plansDir = getLettaHomeSubdir("plans");
             const resolvedPath = resolvePlanTargetPath(
               planWritePath,
               workingDirectory,

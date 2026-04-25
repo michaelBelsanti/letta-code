@@ -1,10 +1,10 @@
 // src/hooks/writer.ts
 // Functions to write hooks to settings files via settings-manager
 
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { settingsManager } from "../settings-manager";
 import { debugLog } from "../utils/debug";
+import { getLettaHome } from "../utils/lettaHome.js";
 import {
   type HookEvent,
   type HookMatcher,
@@ -28,8 +28,7 @@ export type SaveLocation = "user" | "project" | "project-local";
 function isProjectSettingsPathCollidingWithGlobal(
   workingDirectory: string,
 ): boolean {
-  const home = process.env.HOME || homedir();
-  const globalSettingsPath = resolve(home, ".letta", "settings.json");
+  const globalSettingsPath = resolve(getLettaHome(), "settings.json");
   const projectSettingsPath = resolve(
     workingDirectory,
     ".letta",

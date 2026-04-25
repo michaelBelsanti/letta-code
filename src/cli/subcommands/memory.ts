@@ -1,6 +1,5 @@
 import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import {
@@ -9,6 +8,7 @@ import {
   isGitRepo,
   pullMemory,
 } from "../../agent/memoryGit";
+import { getLettaHomeSubdir } from "../../utils/lettaHome.js";
 import { runMemoryTokensAction } from "./memoryTokens";
 
 function printUsage(): void {
@@ -70,11 +70,11 @@ function parseMemoryArgs(argv: string[]) {
 }
 
 function getMemoryRoot(agentId: string): string {
-  return join(homedir(), ".letta", "agents", agentId, "memory");
+  return getLettaHomeSubdir("agents", agentId, "memory");
 }
 
 function getAgentRoot(agentId: string): string {
-  return join(homedir(), ".letta", "agents", agentId);
+  return getLettaHomeSubdir("agents", agentId);
 }
 
 function formatBackupTimestamp(date = new Date()): string {

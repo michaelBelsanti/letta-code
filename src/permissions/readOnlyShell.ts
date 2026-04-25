@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { getLettaHome } from "../utils/lettaHome.js";
 import { resolve } from "node:path";
 
 import { isPathWithinRoots, normalizeScopedPath } from "./memoryScope";
@@ -915,21 +916,21 @@ function parseGitInvocation(
 }
 
 function getAllowedMemoryPrefixes(agentId: string): string[] {
-  const home = homedir();
+  const home = getLettaHome();
   const prefixes: string[] = [
-    normalizeSeparators(resolve(home, ".letta", "agents", agentId, "memory")),
+    normalizeSeparators(resolve(home, "agents", agentId, "memory")),
     normalizeSeparators(
-      resolve(home, ".letta", "agents", agentId, "memory-worktrees"),
+      resolve(home, "agents", agentId, "memory-worktrees"),
     ),
   ];
   const parentId = process.env.LETTA_PARENT_AGENT_ID;
   if (parentId && parentId !== agentId) {
     prefixes.push(
       normalizeSeparators(
-        resolve(home, ".letta", "agents", parentId, "memory"),
+        resolve(home, "agents", parentId, "memory"),
       ),
       normalizeSeparators(
-        resolve(home, ".letta", "agents", parentId, "memory-worktrees"),
+        resolve(home, "agents", parentId, "memory-worktrees"),
       ),
     );
   }

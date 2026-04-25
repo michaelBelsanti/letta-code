@@ -1,10 +1,10 @@
 // src/settings.ts
 // Manages user settings stored in ~/.letta/settings.json and project settings in ./.letta/settings.local.json
 
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { PermissionRules } from "./permissions/types";
 import { exists, mkdir, readFile, writeFile } from "./utils/fs.js";
+import { getLettaHomeSubdir } from "./utils/lettaHome.js";
 
 export interface Settings {
   lastAgent: string | null;
@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 function getSettingsPath(): string {
-  return join(homedir(), ".letta", "settings.json");
+  return getLettaHomeSubdir("settings.json");
 }
 
 /**

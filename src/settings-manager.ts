@@ -2,12 +2,12 @@
 // In-memory settings manager that loads once and provides sync access
 
 import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { HooksConfig } from "./hooks/types";
 import type { PermissionRules } from "./permissions/types";
 import { getRuntimeContext } from "./runtime-context";
 import { trackBoundaryError } from "./telemetry/errorReporting";
+import { getLettaHome } from "./utils/lettaHome.js";
 import { debugWarn } from "./utils/debug.js";
 import { exists, mkdir, readFile, writeFile } from "./utils/fs.js";
 import {
@@ -792,8 +792,7 @@ class SettingsManager {
     if (!this.settings) return;
 
     const settingsPath = this.getSettingsPath();
-    const home = process.env.HOME || homedir();
-    const dirPath = join(home, ".letta");
+    const dirPath = getLettaHome();
 
     try {
       if (!exists(dirPath)) {
@@ -885,9 +884,8 @@ class SettingsManager {
   }
 
   private getSettingsPath(): string {
-    // Use ~/.letta/ like other AI tools (.claude, .cursor, etc.)
-    const home = process.env.HOME || homedir();
-    return join(home, ".letta", "settings.json");
+    // Use XDG/LETTA_HOME-aware path (see utils/lettaHome.ts)
+    return join(getLettaHome(), "settings.json");
   }
 
   private getProjectSettingsPath(workingDirectory: string): string {

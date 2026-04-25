@@ -2803,11 +2803,10 @@ async function handleSkillCommand(
     unlinkSync,
   } = await import("node:fs");
   const { basename, join } = await import("node:path");
+  const { getLettaHome } = await import("../../utils/lettaHome.js");
 
-  // Compute skills dir dynamically to respect LETTA_HOME (important for tests)
-  const lettaHome =
-    process.env.LETTA_HOME ||
-    join(process.env.HOME || process.env.USERPROFILE || "~", ".letta");
+  // Compute skills dir dynamically to respect LETTA_HOME/XDG (important for tests)
+  const lettaHome = getLettaHome();
   const globalSkillsDir = join(lettaHome, "skills");
 
   if (parsed.type === "skill_enable") {

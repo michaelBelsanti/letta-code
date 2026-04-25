@@ -1,10 +1,10 @@
 // src/hooks/loader.ts
 // Loads and matches hooks from settings-manager
 
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { settingsManager } from "../settings-manager";
 import { debugLog } from "../utils/debug";
+import { getLettaHome } from "../utils/lettaHome.js";
 import {
   type HookCommand,
   type HookEvent,
@@ -34,8 +34,7 @@ export function clearHooksCache(): void {
 function isProjectSettingsPathCollidingWithGlobal(
   workingDirectory: string,
 ): boolean {
-  const home = process.env.HOME || homedir();
-  const globalSettingsPath = resolve(home, ".letta", "settings.json");
+  const globalSettingsPath = resolve(getLettaHome(), "settings.json");
   const projectSettingsPath = resolve(
     workingDirectory,
     ".letta",

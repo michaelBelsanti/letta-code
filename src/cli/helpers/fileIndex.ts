@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
+import { getLettaHomeSubdir } from "../../utils/lettaHome.js";
 import { join, normalize, relative, sep } from "node:path";
 import { debugLog } from "../../utils/debug";
 import { readIntSetting } from "../../utils/lettaSettings";
@@ -539,9 +540,8 @@ function sanitizeWorkspacePath(workspacePath: string): string {
 }
 
 function getProjectStorageDir(): string {
-  const homeDir = homedir();
   const sanitizedWorkspace = sanitizeWorkspacePath(indexRoot);
-  return join(homeDir, ".letta", "projects", sanitizedWorkspace);
+  return getLettaHomeSubdir("projects", sanitizedWorkspace);
 }
 
 function ensureProjectStorageDir(): string {

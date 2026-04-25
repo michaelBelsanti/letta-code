@@ -8,12 +8,12 @@
  */
 
 import { existsSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
   DIRECTORY_LIMIT_DEFAULTS,
   getDirectoryLimits,
 } from "../utils/directoryLimits";
+import { getLettaHome } from "../utils/lettaHome.js";
 import { getCurrentAgentId } from "./context";
 
 export const MEMORY_FS_ROOT = ".letta";
@@ -35,11 +35,10 @@ export interface MemoryTreeRenderOptions {
 
 export function getMemoryFilesystemRoot(
   agentId: string,
-  homeDir: string = homedir(),
+  _homeDir?: string,
 ): string {
   return join(
-    homeDir,
-    MEMORY_FS_ROOT,
+    getLettaHome(),
     MEMORY_FS_AGENTS_DIR,
     agentId,
     MEMORY_FS_MEMORY_DIR,
@@ -48,9 +47,9 @@ export function getMemoryFilesystemRoot(
 
 export function getMemorySystemDir(
   agentId: string,
-  homeDir: string = homedir(),
+  _homeDir?: string,
 ): string {
-  return join(getMemoryFilesystemRoot(agentId, homeDir), MEMORY_SYSTEM_DIR);
+  return join(getMemoryFilesystemRoot(agentId), MEMORY_SYSTEM_DIR);
 }
 
 export interface ResolveScopedMemoryDirOptions {
@@ -72,17 +71,16 @@ export function resolveScopedMemoryDir(
   options: ResolveScopedMemoryDirOptions = {},
 ): string | null {
   const env = options.env ?? process.env;
-  const homeDir = options.homeDir ?? env.HOME ?? env.USERPROFILE ?? homedir();
 
   const explicitAgentId = options.agentId?.trim();
   if (explicitAgentId) {
-    return getMemoryFilesystemRoot(explicitAgentId, homeDir);
+    return getMemoryFilesystemRoot(explicitAgentId);
   }
 
   try {
     const scopedAgentId = getCurrentAgentId().trim();
     if (scopedAgentId) {
-      return getMemoryFilesystemRoot(scopedAgentId, homeDir);
+      return getMemoryFilesystemRoot(scopedAgentId);
     }
   } catch {
     // No runtime-scoped agent context; fall back below.
@@ -95,7 +93,7 @@ export function resolveScopedMemoryDir(
 
   const envAgentId = (env.LETTA_AGENT_ID || env.AGENT_ID || "").trim();
   if (envAgentId) {
-    return getMemoryFilesystemRoot(envAgentId, homeDir);
+    return getMemoryFilesystemRoot(envAgentId);
   }
 
   return null;
@@ -103,10 +101,10 @@ export function resolveScopedMemoryDir(
 
 export function ensureMemoryFilesystemDirs(
   agentId: string,
-  homeDir: string = homedir(),
+  _homeDir?: string,
 ): void {
-  const root = getMemoryFilesystemRoot(agentId, homeDir);
-  const systemDir = getMemorySystemDir(agentId, homeDir);
+  const root = getMemoryFilesystemRoot(agentId);
+  const systemDir = getMemorySystemDir(agentId);
 
   if (!existsSync(root)) {
     mkdirSync(root, { recursive: true });

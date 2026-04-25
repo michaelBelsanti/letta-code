@@ -866,7 +866,7 @@ async function main(): Promise<void> {
         "Your credentials may be invalid or the server may be unreachable.",
       );
       console.error(
-        "Delete ~/.letta/settings.json then run 'letta' to re-authenticate",
+        "Delete settings.json in your Letta config directory then run 'letta' to re-authenticate",
       );
       process.exit(1);
     }
@@ -1300,7 +1300,7 @@ async function main(): Promise<void> {
             } catch {
               // Local agent doesn't exist, try global
               setFailedAgentMessage(
-                `Unable to locate agent ${localAgentId} in .letta/, checking global (~/.letta)`,
+                `Unable to locate agent ${localAgentId} in .letta/, checking global directory`,
               );
             }
           } else {
@@ -1323,7 +1323,7 @@ async function main(): Promise<void> {
           }
 
           // No valid agent found anywhere
-          console.error("No recent session found in .letta/ or ~/.letta.");
+          console.error("No recent session found in .letta/ or global directory.");
           console.error("Run 'letta' to get started.");
           process.exit(1);
         }

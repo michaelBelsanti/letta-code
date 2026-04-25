@@ -98,9 +98,9 @@ Headless deploy flow:
   letta server --channels telegram --install-channel-runtimes
 
 State files:
-  ~/.letta/channels/telegram/accounts.json
-  ~/.letta/channels/telegram/pairing.yaml
-  ~/.letta/channels/telegram/routing.yaml
+  <letta-home>/channels/telegram/accounts.json
+  <letta-home>/channels/telegram/pairing.yaml
+  <letta-home>/channels/telegram/routing.yaml
 
 Output is JSON.
 `.trim(),

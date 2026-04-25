@@ -19,6 +19,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { getLettaHome } from "../utils/lettaHome.js";
 import { estimatePeriodMs } from "./parseInterval";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -91,8 +92,7 @@ const GC_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 // ── Paths ───────────────────────────────────────────────────────────
 
 function getLettaDir(): string {
-  if (process.env.LETTA_HOME) return process.env.LETTA_HOME;
-  return join(process.env.HOME ?? process.env.USERPROFILE ?? "~", ".letta");
+  return getLettaHome();
 }
 
 function getCronFilePath(): string {

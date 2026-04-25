@@ -1,3 +1,4 @@
+import { getLettaHome } from "../../utils/lettaHome.js";
 import {
   STATUSLINE_DERIVED_FIELDS,
   STATUSLINE_NATIVE_FIELDS,
@@ -6,6 +7,7 @@ import {
 export function formatStatusLineHelp(): string {
   const allFields = [...STATUSLINE_NATIVE_FIELDS, ...STATUSLINE_DERIVED_FIELDS];
   const fieldList = allFields.map((f) => `  - ${f.path}`).join("\n");
+  const lettaHome = getLettaHome();
 
   return [
     "/statusline help",
@@ -22,14 +24,14 @@ export function formatStatusLineHelp(): string {
     "  /statusline help",
     "",
     "SCOPES",
-    "  (default) global   ~/.letta/settings.json",
+    `  (default) global   ${lettaHome}/settings.json`,
     "  -p       project   ./.letta/settings.json",
     "  -l       local     ./.letta/settings.local.json",
     "",
     "CONFIGURATION",
     '  "statusLine": {',
     '    "type": "command",',
-    '    "command": "~/.letta/statusline-command.sh",',
+    `    "command": "${lettaHome}/statusline-command.sh",`,
     '    "padding": 2,',
     '    "timeout": 5000,',
     '    "debounceMs": 300,',

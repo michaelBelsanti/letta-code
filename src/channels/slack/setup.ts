@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { upsertChannelAccount } from "../accounts";
 import type { DmPolicy, SlackChannelAccount } from "../types";
+import { getLettaHome } from "../../utils/lettaHome.js";
 import { resolveSlackAccountDisplayName } from "./adapter";
 import { ensureSlackRuntimeInstalled } from "./runtime";
 
@@ -101,7 +102,7 @@ export async function runSlackSetup(): Promise<boolean> {
 
     upsertChannelAccount("slack", account);
     console.log("\n✓ Slack app configured!");
-    console.log("Config written to: ~/.letta/channels/slack/accounts.json\n");
+    console.log(`Config written to: ${getLettaHome()}/channels/slack/accounts.json\n`);
     console.log("Next steps:");
     console.log("  1. Start the listener: letta server --channels slack");
     console.log("  2. Open Channels > Slack in Letta Code");

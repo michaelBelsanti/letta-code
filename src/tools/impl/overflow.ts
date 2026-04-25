@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { getLettaHome } from "../../utils/lettaHome.js";
 
 /**
  * Configuration options for tool output overflow behavior.
@@ -29,8 +30,7 @@ export const OVERFLOW_CONFIG = {
  * @returns Absolute path to the overflow directory
  */
 export function getOverflowDirectory(workingDirectory: string): string {
-  const homeDir = os.homedir();
-  const lettaDir = path.join(homeDir, ".letta");
+  const lettaDir = getLettaHome();
 
   // Normalize and sanitize the working directory path for use in the file system
   const normalizedPath = path.normalize(workingDirectory);

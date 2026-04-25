@@ -13,6 +13,7 @@ import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFrontmatter } from "../utils/frontmatter";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 import { ALL_SKILL_SOURCES } from "./skillSources";
 
 /**
@@ -99,25 +100,17 @@ export function compareSkills(a: Skill, b: Skill): number {
 export const SKILLS_DIR = ".skills";
 
 /**
- * Global skills directory (in user's home directory)
+ * Global skills directory (in user's Letta home directory)
  */
-export const GLOBAL_SKILLS_DIR = join(
-  process.env.HOME || process.env.USERPROFILE || "~",
-  ".letta/skills",
-);
+export const GLOBAL_SKILLS_DIR = getLettaHomeSubdir("skills");
 
 /**
  * Get the agent-scoped skills directory for a specific agent
  * @param agentId - The Letta agent ID (e.g., "agent-abc123")
- * @returns Path like ~/.letta/agents/agent-abc123/skills/
+ * @returns Path like <letta-home>/agents/agent-abc123/skills/
  */
 export function getAgentSkillsDir(agentId: string): string {
-  return join(
-    process.env.HOME || process.env.USERPROFILE || "~",
-    ".letta/agents",
-    agentId,
-    "skills",
-  );
+  return getLettaHomeSubdir("agents", agentId, "skills");
 }
 
 /**
@@ -170,8 +163,8 @@ async function discoverSkillsFromDir(
  *
  * Priority order (highest to lowest):
  * 1. Project skills (.skills/ in current directory)
- * 2. Agent skills (~/.letta/agents/{agent-id}/skills/)
- * 3. Global skills (~/.letta/skills/)
+ * 2. Agent skills (<letta-home>/agents/{agent-id}/skills/)
+ * 3. Global skills (<letta-home>/skills/)
  * 4. Bundled skills (embedded in package)
  *
  * @param projectSkillsPath - The project skills directory (default: .skills in current directory)

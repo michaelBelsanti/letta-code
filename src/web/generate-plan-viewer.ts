@@ -7,12 +7,12 @@
  */
 
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 import planViewerTemplate from "./plan-viewer-template.txt";
 import type { PlanViewerData } from "./types";
 
-const VIEWERS_DIR = join(homedir(), ".letta", "viewers");
+const VIEWERS_DIR = getLettaHomeSubdir("viewers");
 
 export interface GeneratePlanResult {
   filePath: string;

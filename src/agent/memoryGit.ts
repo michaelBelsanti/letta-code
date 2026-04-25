@@ -20,8 +20,9 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { homedir, platform } from "node:os";
+import { platform } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 import { promisify } from "node:util";
 import { debugLog, debugWarn } from "../utils/debug";
 import { getClient, getMemfsServerUrl } from "./client";
@@ -65,9 +66,9 @@ export interface CommitAndSyncMemoryWriteResult {
   rescueRef?: string;
 }
 
-/** Get the agent root directory (~/.letta/agents/{id}/) */
+/** Get the agent root directory */
 export function getAgentRootDir(agentId: string): string {
-  return join(homedir(), ".letta", "agents", agentId);
+  return getLettaHomeSubdir("agents", agentId);
 }
 
 /** Get the git repo directory for memory (now ~/.letta/agents/{id}/memory/) */

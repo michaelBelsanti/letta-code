@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { upsertChannelAccount } from "../accounts";
 import type { DiscordChannelAccount, DmPolicy } from "../types";
+import { getLettaHome } from "../../utils/lettaHome.js";
 import { ensureDiscordRuntimeInstalled } from "./runtime";
 
 function isValidBotToken(token: string): boolean {
@@ -93,7 +94,7 @@ export async function runDiscordSetup(): Promise<boolean> {
         "  You can bind later: letta channels bind --channel discord --agent <id>",
       );
       console.log(
-        "  Or set agentId in ~/.letta/channels/discord/accounts.json\n",
+        `  Or set agentId in ${getLettaHome()}/channels/discord/accounts.json\n`,
       );
     }
 
@@ -112,7 +113,7 @@ export async function runDiscordSetup(): Promise<boolean> {
 
     upsertChannelAccount("discord", account);
     console.log("\n✓ Discord bot configured!");
-    console.log("Config written to: ~/.letta/channels/discord/accounts.json\n");
+    console.log(`Config written to: ${getLettaHome()}/channels/discord/accounts.json\n`);
     console.log("Next steps:");
     console.log("  1. Start the listener: letta server --channels discord");
     console.log(

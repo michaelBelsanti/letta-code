@@ -6,8 +6,8 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 import type {
   ChannelConfig,
   DiscordChannelConfig,
@@ -18,7 +18,7 @@ import type {
 
 // ── Paths ─────────────────────────────────────────────────────────
 
-const CHANNELS_ROOT = join(homedir(), ".letta", "channels");
+const CHANNELS_ROOT = getLettaHomeSubdir("channels");
 
 export function getChannelsRoot(): string {
   return CHANNELS_ROOT;

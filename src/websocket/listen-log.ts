@@ -11,10 +11,10 @@ import {
   readdirSync,
   unlinkSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { getLettaHomeSubdir } from "../utils/lettaHome.js";
 
-const REMOTE_LOG_DIR = join(homedir(), ".letta", "logs", "remote");
+const REMOTE_LOG_DIR = getLettaHomeSubdir("logs", "remote");
 const MAX_LOG_FILES = 10;
 
 function formatTimestamp(): string {

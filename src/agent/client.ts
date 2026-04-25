@@ -213,7 +213,7 @@ export async function getClient() {
         });
         console.error("Failed to refresh access token:", error);
         console.error(
-          "\nIf you experience this issue multiple times, move ~/.letta to ~/.letta_backup, and re-run 'letta' to re-authenticate",
+          "\nIf you experience this issue multiple times, move your Letta config directory to a backup, and re-run 'letta' to re-authenticate",
         );
         throw new Error(
           `Failed to refresh access token: ${

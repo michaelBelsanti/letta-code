@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { upsertChannelAccount } from "../accounts";
 import type { DmPolicy, TelegramChannelAccount } from "../types";
+import { getLettaHome } from "../../utils/lettaHome.js";
 import { validateTelegramToken } from "./adapter";
 import { ensureTelegramRuntimeInstalled } from "./runtime";
 
@@ -105,7 +106,7 @@ export async function runTelegramSetup(): Promise<boolean> {
     upsertChannelAccount("telegram", account);
     console.log("\n✓ Telegram bot configured!");
     console.log(
-      "Config written to: ~/.letta/channels/telegram/accounts.json\n",
+      `Config written to: ${getLettaHome()}/channels/telegram/accounts.json\n`,
     );
     console.log("Next steps:");
     console.log("  1. Start the listener: letta server --channels telegram");

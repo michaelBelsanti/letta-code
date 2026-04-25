@@ -3,6 +3,7 @@
 
 import { homedir } from "node:os";
 import { dirname, relative, resolve, win32 } from "node:path";
+import { getLettaHome } from "../utils/lettaHome.js";
 import { canonicalToolName, isFileToolName } from "./canonical";
 import {
   isReadOnlyShellCommand,
@@ -514,8 +515,10 @@ function detectSkillScript(
     return projectSkill;
   }
 
+  const normalizedLettaHome = getLettaHome().replace(/\\/g, "/").replace(/\/+$/, "");
+
   const agentRegex = new RegExp(
-    `^${escapeRegex(normalizedHomeDir)}/\\.letta/agents/[^/]+/skills/(.+?)/scripts/`,
+    `^${escapeRegex(normalizedLettaHome)}/agents/[^/]+/skills/(.+?)/scripts/`,
   );
   const agentSkill = detect("agent-scoped", agentRegex);
   if (agentSkill) {
@@ -523,7 +526,7 @@ function detectSkillScript(
   }
 
   const globalRegex = new RegExp(
-    `^${escapeRegex(normalizedHomeDir)}/\\.letta/skills/(.+?)/scripts/`,
+    `^${escapeRegex(normalizedLettaHome)}/skills/(.+?)/scripts/`,
   );
   const globalSkill = detect("global", globalRegex);
   if (globalSkill) {
