@@ -88,6 +88,7 @@ export interface Settings {
   permissions?: PermissionRules;
   hooks?: HooksConfig; // Hook commands that run at various lifecycle points (includes disabled flag)
   statusLine?: StatusLineConfig; // Configurable status line command
+  favoriteModels?: string[]; // User-pinned model handles shown in Favorites tab
   env?: Record<string, string>;
   // Server-indexed settings (agent IDs are server-specific)
   sessionsByServer?: Record<string, SessionRef>; // key = normalized base URL (e.g., "api.letta.com", "localhost:8283")
@@ -1715,6 +1716,35 @@ class SettingsManager {
   clearSystemPromptPreset(agentId: string): void {
     // Setting to empty string triggers the cleanup `if (!updated.systemPromptPreset) delete ...`
     this.upsertAgentSettings(agentId, { systemPromptPreset: "" });
+  }
+
+  /**
+   * Get the user's favorite model handles (for the Favorites tab in ModelSelector).
+   */
+  getFavoriteModels(): string[] {
+    return this.getSettings().favoriteModels ?? [];
+  }
+
+  /**
+   * Set the user's favorite model handles.
+   */
+  setFavoriteModels(handles: string[]): void {
+    this.updateSettings({ favoriteModels: handles });
+  }
+
+  /**
+   * Toggle a model handle in/out of the favorites list.
+   * Returns true if added, false if removed.
+   */
+  toggleFavoriteModel(handle: string): boolean {
+    const current = this.getFavoriteModels();
+    const idx = current.indexOf(handle);
+    if (idx >= 0) {
+      this.setFavoriteModels(current.filter((h) => h !== handle));
+      return false;
+    }
+    this.setFavoriteModels([...current, handle]);
+    return true;
   }
 
   /**

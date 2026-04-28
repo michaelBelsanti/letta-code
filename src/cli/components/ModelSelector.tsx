@@ -23,6 +23,7 @@ const SOLID_LINE = "─";
 const VISIBLE_ITEMS = 8;
 
 type ModelCategory =
+  | "favorites"
   | "supported"
   | "byok"
   | "byok-all"
@@ -41,9 +42,9 @@ export function getModelCategories(
   isSelfHosted?: boolean,
 ): ModelCategory[] {
   if (isSelfHosted) {
-    return ["server-recommended", "server-all"];
+    return ["favorites", "server-recommended", "server-all"];
   }
-  return ["supported", "all", "byok", "byok-all"];
+  return ["favorites", "supported", "all", "byok", "byok-all"];
 }
 
 type UiModel = {
@@ -90,6 +91,10 @@ interface ModelSelectorProps {
   billingTier?: string;
   /** Whether connected to a self-hosted server (not api.letta.com) */
   isSelfHosted?: boolean;
+  /** User's favorite model handles */
+  favoriteModels?: string[];
+  /** Toggle a model in/out of favorites */
+  onToggleFavorite?: (handle: string) => void;
 }
 
 export function ModelSelector({
@@ -100,6 +105,8 @@ export function ModelSelector({
   forceRefresh: forceRefreshOnMount,
   billingTier,
   isSelfHosted,
+  favoriteModels: favoriteHandles,
+  onToggleFavorite,
 }: ModelSelectorProps) {
   const terminalWidth = useTerminalWidth();
   const solidLine = SOLID_LINE.repeat(Math.max(terminalWidth, 10));
@@ -449,8 +456,51 @@ export function ModelSelector({
     return handles;
   }, [isSelfHosted, allApiHandles, searchQuery]);
 
+  // Favorites: models whose handles are in the user's favorites set
+  const favoriteModelsList = useMemo(() => {
+    if (!favoriteHandles || favoriteHandles.length === 0) return [];
+    if (availableHandles === undefined) return [];
+    const handleSet = new Set(favoriteHandles);
+    const modelsForHandles = allApiHandles
+      .filter((handle) => handleSet.has(handle))
+      .map((handle) => {
+        const staticModel = pickPreferredStaticModel(handle);
+        if (staticModel) {
+          return { ...staticModel, id: handle, handle };
+        }
+        return {
+          id: handle,
+          handle,
+          label: handle,
+          description: "",
+        } satisfies UiModel;
+      });
+    // Preserve the order from favoriteHandles
+    const order = new Map(favoriteHandles.map((h, i) => [h, i]));
+    modelsForHandles.sort(
+      (a, b) => (order.get(a.handle) ?? 0) - (order.get(b.handle) ?? 0),
+    );
+    if (!searchQuery) return modelsForHandles;
+    const query = searchQuery.toLowerCase();
+    return modelsForHandles.filter(
+      (m) =>
+        m.label.toLowerCase().includes(query) ||
+        m.description.toLowerCase().includes(query) ||
+        m.handle.toLowerCase().includes(query),
+    );
+  }, [
+    favoriteHandles,
+    availableHandles,
+    allApiHandles,
+    pickPreferredStaticModel,
+    searchQuery,
+  ]);
+
   // Get the list for current category
   const currentList: UiModel[] = useMemo(() => {
+    if (category === "favorites") {
+      return favoriteModelsList;
+    }
     if (category === "supported") {
       return supportedModels;
     }
@@ -481,6 +531,7 @@ export function ModelSelector({
     return allLettaModels;
   }, [
     category,
+    favoriteModelsList,
     supportedModels,
     byokModels,
     byokAllModels,
@@ -565,6 +616,15 @@ export function ModelSelector({
         return;
       }
 
+      // Ctrl+F: toggle current model as favorite
+      if (key.ctrl && input === "f") {
+        const model = currentList[selectedIndex];
+        if (model && onToggleFavorite) {
+          onToggleFavorite(model.handle);
+        }
+        return;
+      }
+
       // Tab or left/right arrows to switch categories
       if (key.tab || key.rightArrow) {
         cycleCategory();
@@ -630,6 +690,7 @@ export function ModelSelector({
   );
 
   const getCategoryLabel = (cat: ModelCategory) => {
+    if (cat === "favorites") return `★ [${favoriteModelsList.length}]`;
     if (cat === "supported") return `Letta API [${supportedModels.length}]`;
     if (cat === "byok") return `BYOK [${byokModels.length}]`;
     if (cat === "byok-all") return `BYOK (all) [${byokAllModels.length}]`;
@@ -640,6 +701,9 @@ export function ModelSelector({
   };
 
   const getCategoryDescription = (cat: ModelCategory) => {
+    if (cat === "favorites") {
+      return "Your pinned models · Ctrl+F to add/remove from other tabs";
+    }
     if (cat === "server-recommended") {
       return "Recommended models currently available for this account";
     }
@@ -731,9 +795,11 @@ export function ModelSelector({
       {!isLoading && !refreshing && visibleModels.length === 0 && (
         <Box paddingLeft={2}>
           <Text dimColor>
-            {category === "supported"
-              ? "No supported models available."
-              : "No additional models available."}
+            {category === "favorites"
+              ? "No favorites yet. Use Ctrl+F in other tabs to pin models."
+              : category === "supported"
+                ? "No supported models available."
+                : "No additional models available."}
           </Text>
         </Box>
       )}
@@ -750,6 +816,7 @@ export function ModelSelector({
             const actualIndex = startIndex + index;
             const isSelected = actualIndex === selectedIndex;
             const isCurrent = model.id === currentModelId;
+            const isFavorite = favoriteHandles?.includes(model.handle);
             // Show lock for non-free models when on free tier (only for Letta API tabs)
             const showLock =
               isFreeTier &&
@@ -766,6 +833,7 @@ export function ModelSelector({
                   {isSelected ? "> " : "  "}
                 </Text>
                 {showLock && <Text dimColor>🔒 </Text>}
+                {isFavorite && !showLock && <Text color="yellow">★ </Text>}
                 <Text
                   bold={isSelected}
                   color={
@@ -803,7 +871,8 @@ export function ModelSelector({
             refresh list
           </Text>
           <Text dimColor>
-            {"  "}Enter select · ↑↓ navigate · ←→/Tab switch · Esc cancel
+            {"  "}Enter select · ↑↓ navigate · ←→/Tab switch · Ctrl+F
+            favorite · Esc cancel
           </Text>
         </Box>
       )}

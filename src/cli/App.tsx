@@ -1626,6 +1626,13 @@ export default function App({
     filterProvider?: string;
     forceRefresh?: boolean;
   }>({});
+  const [favoriteModels, setFavoriteModels] = useState<string[]>(
+    settingsManager.getFavoriteModels(),
+  );
+  const handleToggleFavoriteModel = useCallback((handle: string) => {
+    settingsManager.toggleFavoriteModel(handle);
+    setFavoriteModels(settingsManager.getFavoriteModels());
+  }, []);
   const [modelReasoningPrompt, setModelReasoningPrompt] = useState<{
     modelLabel: string;
     initialModelId: string;
@@ -14450,6 +14457,8 @@ If using apply_patch, use this exact relative patch path: ${applyPatchRelativePa
                   filterProvider={modelSelectorOptions.filterProvider}
                   forceRefresh={modelSelectorOptions.forceRefresh}
                   billingTier={billingTier ?? undefined}
+                  favoriteModels={favoriteModels}
+                  onToggleFavorite={handleToggleFavoriteModel}
                   isSelfHosted={(() => {
                     const settings = settingsManager.getSettings();
                     const baseURL =
