@@ -200,11 +200,22 @@ const useInput = (inputHandler, options = {}) => {
                 return;
             }
             
+            // Ctrl+vim navigation: Ctrl+H=left, Ctrl+J=down, Ctrl+K=up, Ctrl+L=right.
+            // Only active via Kitty CSI-u protocol which delivers clean Ctrl+letter events.
+            // Without CSI-u, Ctrl+H=\x08 (backspace) and Ctrl+J=\n (enter) are consumed
+            // by parseKeypress before reaching this code, so there's no conflict.
+            const isCtrlVim = keypress.ctrl && !keypress.meta && !keypress.shift;
+            const ctrlVimArrow =
+                isCtrlVim && keypress.name === 'h' ? 'left' :
+                isCtrlVim && keypress.name === 'j' ? 'down' :
+                isCtrlVim && keypress.name === 'k' ? 'up' :
+                isCtrlVim && keypress.name === 'l' ? 'right' : null;
+
             const key = {
-                upArrow: keypress.name === 'up',
-                downArrow: keypress.name === 'down',
-                leftArrow: keypress.name === 'left',
-                rightArrow: keypress.name === 'right',
+                upArrow: keypress.name === 'up' || ctrlVimArrow === 'up',
+                downArrow: keypress.name === 'down' || ctrlVimArrow === 'down',
+                leftArrow: keypress.name === 'left' || ctrlVimArrow === 'left',
+                rightArrow: keypress.name === 'right' || ctrlVimArrow === 'right',
                 pageDown: keypress.name === 'pagedown',
                 pageUp: keypress.name === 'pageup',
                 // Linux terminals may emit Enter as name:"enter" (\n), while
@@ -217,7 +228,8 @@ const useInput = (inputHandler, options = {}) => {
                 backspace: keypress.name === 'backspace',
                 delete: keypress.name === 'delete',
                 meta: keypress.meta || keypress.name === 'escape' || keypress.option,
-                isPasted: false
+                isPasted: false,
+                ctrlVim: !!ctrlVimArrow
             };
 
             // Debug logging for key parsing (LETTA_DEBUG_KEYS=1)
@@ -237,6 +249,12 @@ const useInput = (inputHandler, options = {}) => {
             }
 
             if (nonAlphanumericKeys.includes(keypress.name)) {
+                input = '';
+            }
+
+            // Clear input for Ctrl+vim navigation so the letter doesn't
+            // leak to handlers — only the arrow key flags matter.
+            if (ctrlVimArrow) {
                 input = '';
             }
 

@@ -8,6 +8,7 @@ interface Key {
   ctrl?: boolean;
   meta?: boolean;
   isPasted?: boolean;
+  ctrlVim?: boolean;
 }
 
 /**
@@ -29,6 +30,9 @@ export function useTextInputCursor(initialText = "") {
    * @returns true if the key was handled, false otherwise
    */
   const handleKey = (input: string, key: Key): boolean => {
+    // Ignore Ctrl+vim (H/J/K/L) — vim navigation is for menus, not text editing.
+    if (key.ctrlVim) return false;
+
     // Arrow key navigation
     if (key.leftArrow) {
       setCursorPos((prev) => Math.max(0, prev - 1));

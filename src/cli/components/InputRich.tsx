@@ -1204,6 +1204,9 @@ export function Input({
       return;
     }
 
+    // Ignore Ctrl+vim keys (H/J/K/L) — vim navigation is for menus, not the prompt.
+    if (key.ctrlVim) return;
+
     if (key.upArrow || key.downArrow) {
       // Calculate visual lines accounting for both soft wrapping and hard newlines
       const visualLines = getVisualLines(value, contentWidth);

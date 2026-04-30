@@ -102,7 +102,7 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
         let nextValue = originalValue;
         let nextCursorWidth = 0;
         let nextKillBuffer = killBuffer;
-        if (key.leftArrow || key.rightArrow) {
+        if ((key.leftArrow || key.rightArrow) && !key.ctrlVim) {
             // Skip if meta is pressed - Option+Arrow is handled by parent for word navigation
             if (key.meta) {
                 return;
@@ -111,7 +111,7 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
                 nextCursorOffset += key.leftArrow ? -1 : 1;
             }
         }
-        else if (key.upArrow || key.downArrow) {
+        else if ((key.upArrow || key.downArrow) && !key.ctrlVim) {
             // Let parent decide (wrapped line navigation)
             return;
         }
