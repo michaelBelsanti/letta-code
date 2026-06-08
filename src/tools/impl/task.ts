@@ -684,6 +684,11 @@ export async function task(args: TaskArgs): Promise<string> {
   // Determine if deploying an existing agent
   const isDeployingExisting = Boolean(args.agent_id || args.conversation_id);
 
+  // "default" conversation is per-agent — requires agent_id to disambiguate
+  if (args.conversation_id === "default" && !args.agent_id) {
+    return 'Error: conversation_id "default" requires agent_id to disambiguate which agent.';
+  }
+
   // Validate required parameters based on mode
   if (isDeployingExisting) {
     // Deploying existing agent: prompt and description required, subagent_type optional
