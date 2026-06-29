@@ -318,7 +318,7 @@ describe("local managed mod package installer", () => {
     ).toMatchObject({ ref: "abc123" });
   });
 
-  test("installs a local package into the managed package directory", () => {
+  test("installs a local package into the managed package directory", async () => {
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
@@ -336,7 +336,7 @@ describe("local managed mod package installer", () => {
       "ignored\n",
     );
 
-    const result = installLocalManagedModPackage({
+    const result = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
@@ -362,7 +362,7 @@ describe("local managed mod package installer", () => {
     ]);
   });
 
-  test("first install removes copied package root when registry write fails", () => {
+  test("first install removes copied package root when registry write fails", async () => {
     if (process.platform === "win32") return;
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
@@ -377,12 +377,12 @@ describe("local managed mod package installer", () => {
     chmodSync(registryPath, 0o444);
 
     try {
-      expect(() =>
+      await expect(
         installLocalManagedModPackage({
           modsRoot,
           packageDirectory: packageRoot,
         }),
-      ).toThrow();
+      ).rejects.toThrow();
     } finally {
       chmodSync(registryPath, 0o644);
     }
@@ -392,12 +392,12 @@ describe("local managed mod package installer", () => {
     expect(readFileSync(registryPath, "utf8")).toBe('{\n  "packages": []\n}\n');
   });
 
-  test("reinstall replaces the package root and updates the same registry entry", () => {
+  test("reinstall replaces the package root and updates the same registry entry", async () => {
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
     writeLocalPackage({ packageRoot });
-    const first = installLocalManagedModPackage({
+    const first = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
@@ -409,7 +409,7 @@ describe("local managed mod package installer", () => {
       packageRoot,
       version: "0.2.0",
     });
-    const second = installLocalManagedModPackage({
+    const second = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
@@ -429,13 +429,13 @@ describe("local managed mod package installer", () => {
     ]);
   });
 
-  test("reinstall restores existing package root when registry write fails", () => {
+  test("reinstall restores existing package root when registry write fails", async () => {
     if (process.platform === "win32") return;
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
     writeLocalPackage({ packageRoot });
-    const first = installLocalManagedModPackage({
+    const first = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
@@ -449,12 +449,12 @@ describe("local managed mod package installer", () => {
     chmodSync(registryPath, 0o444);
 
     try {
-      expect(() =>
+      await expect(
         installLocalManagedModPackage({
           modsRoot,
           packageDirectory: packageRoot,
         }),
-      ).toThrow();
+      ).rejects.toThrow();
     } finally {
       chmodSync(registryPath, 0o644);
     }
@@ -471,7 +471,7 @@ describe("local managed mod package installer", () => {
     ]);
   });
 
-  test("missing letta manifest fails before writing", () => {
+  test("missing letta manifest fails before writing", async () => {
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
@@ -481,17 +481,17 @@ describe("local managed mod package installer", () => {
       `${JSON.stringify({ name: "@caren/my-mod", version: "0.1.0" })}\n`,
     );
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: packageRoot,
       }),
-    ).toThrow("Package does not include a package.json#letta manifest");
+    ).rejects.toThrow("Package does not include a package.json#letta manifest");
     expect(existsSync(path.join(modsRoot, "packages"))).toBe(false);
     expect(existsSync(path.join(modsRoot, "packages.json"))).toBe(false);
   });
 
-  test("missing declared mod file fails before writing", () => {
+  test("missing declared mod file fails before writing", async () => {
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
@@ -501,17 +501,17 @@ describe("local managed mod package installer", () => {
       writeEntries: false,
     });
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: packageRoot,
       }),
-    ).toThrow("Package mod entry does not exist: mods/missing.ts");
+    ).rejects.toThrow("Package mod entry does not exist: mods/missing.ts");
     expect(existsSync(path.join(modsRoot, "packages"))).toBe(false);
     expect(existsSync(path.join(modsRoot, "packages.json"))).toBe(false);
   });
 
-  test("malformed registry fails before copying", () => {
+  test("malformed registry fails before copying", async () => {
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
@@ -519,12 +519,12 @@ describe("local managed mod package installer", () => {
     writeFileSync(path.join(modsRoot, "packages.json"), "{\n");
     writeLocalPackage({ packageRoot });
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: packageRoot,
       }),
-    ).toThrow();
+    ).rejects.toThrow();
     expect(readFileSync(path.join(modsRoot, "packages.json"), "utf8")).toBe(
       "{\n",
     );
@@ -533,7 +533,7 @@ describe("local managed mod package installer", () => {
     ).toBe(false);
   });
 
-  test("source inside managed packages directory is rejected", () => {
+  test("source inside managed packages directory is rejected", async () => {
     const root = createTempDir();
     const modsRoot = path.join(root, "mods");
     const packageRoot = path.join(
@@ -545,30 +545,32 @@ describe("local managed mod package installer", () => {
     );
     writeLocalPackage({ packageRoot });
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: packageRoot,
       }),
-    ).toThrow(
+    ).rejects.toThrow(
       "Cannot install a package from inside the managed packages directory",
     );
   });
 
-  test("destination inside source package directory is rejected", () => {
+  test("destination inside source package directory is rejected", async () => {
     const root = createTempDir();
     const modsRoot = path.join(root, "mods");
     writeLocalPackage({ packageRoot: modsRoot });
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: modsRoot,
       }),
-    ).toThrow("Cannot install a package into one of its own subdirectories");
+    ).rejects.toThrow(
+      "Cannot install a package into one of its own subdirectories",
+    );
   });
 
-  test("symlinks in source packages are rejected", () => {
+  test("symlinks in source packages are rejected", async () => {
     if (process.platform === "win32") return;
     const root = createTempDir();
     const packageRoot = path.join(root, "source");
@@ -579,12 +581,12 @@ describe("local managed mod package installer", () => {
       path.join(packageRoot, "linked.ts"),
     );
 
-    expect(() =>
+    await expect(
       installLocalManagedModPackage({
         modsRoot,
         packageDirectory: packageRoot,
       }),
-    ).toThrow("Package contains unsupported symlink");
+    ).rejects.toThrow("Package contains unsupported symlink");
     expect(
       existsSync(path.join(modsRoot, "packages", "npm", "@caren", "my-mod")),
     ).toBe(false);
@@ -718,7 +720,7 @@ describe("local managed mod package installer", () => {
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
     writeLocalPackage({ packageRoot });
-    const first = installLocalManagedModPackage({
+    const first = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
@@ -785,7 +787,7 @@ describe("local managed mod package installer", () => {
     const packageRoot = path.join(root, "source");
     const modsRoot = path.join(root, "mods");
     writeLocalPackage({ packageRoot });
-    installLocalManagedModPackage({
+    await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: packageRoot,
     });
