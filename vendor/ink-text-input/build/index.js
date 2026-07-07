@@ -130,8 +130,10 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
                 return;
             }
             if (cursorOffset > 0) {
-                nextValue = originalValue.slice(0, cursorOffset - 1) + originalValue.slice(cursorOffset, originalValue.length);
-                nextCursorOffset--;
+                // Support repeat count for coalesced backspace bytes (mobile SSH)
+                const deleteCount = Math.min(key.repeat || 1, cursorOffset);
+                nextValue = originalValue.slice(0, cursorOffset - deleteCount) + originalValue.slice(cursorOffset, originalValue.length);
+                nextCursorOffset -= deleteCount;
             }
         }
         else if (key.ctrl && input === 'a') {

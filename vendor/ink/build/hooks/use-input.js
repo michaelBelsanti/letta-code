@@ -189,6 +189,27 @@ const useInput = (inputHandler, options = {}) => {
                 }
             }
 
+            // Handle repeated backspace/delete bytes sent in a single data chunk.
+            // Mobile SSH clients (e.g. holding backspace on a phone) coalesce
+            // repeated keypresses into one TCP packet. parseKeypress only handles
+            // single bytes, so "\x7f\x7f" gets an empty name and would be inserted
+            // as literal text (garbage chars). Detect this and collapse into a
+            // single delete keypress with a repeat count.
+            if (!keypress.name && typeof data === 'string' && data.length > 1) {
+                if (/^[\x08\x7f]+$/.test(data)) {
+                    keypress = {
+                        name: data[0] === '\x08' ? 'backspace' : 'delete',
+                        ctrl: false,
+                        meta: false,
+                        shift: false,
+                        option: false,
+                        sequence: data[0],
+                        raw: data,
+                    };
+                    keypress.repeat = data.length;
+                }
+            }
+
             // Modified Enter can be followed by an extra bare newline event
             // on some terminals. Suppress only that immediate follow-up.
             if (shouldStartModifiedEnterSuppression(keypress)) {
@@ -217,7 +238,8 @@ const useInput = (inputHandler, options = {}) => {
                 backspace: keypress.name === 'backspace',
                 delete: keypress.name === 'delete',
                 meta: keypress.meta || keypress.name === 'escape' || keypress.option,
-                isPasted: false
+                isPasted: false,
+                repeat: keypress.repeat || undefined
             };
 
             // Debug logging for key parsing (LETTA_DEBUG_KEYS=1)
