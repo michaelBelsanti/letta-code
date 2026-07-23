@@ -20,7 +20,7 @@ import {
   type SubagentMemoryScope,
 } from "@/agent/subagents";
 import { spawnSubagent } from "@/agent/subagents/manager";
-import { getBackend } from "@/backend";
+import { type BackendMode, getBackend } from "@/backend";
 import { runSubagentStopHooks } from "@/hooks";
 import { getCurrentWorkingDirectory } from "@/runtime-context";
 import { settingsManager } from "@/settings-manager";
@@ -43,6 +43,7 @@ import {
 } from "./process_manager.js";
 import { LIMITS, truncateByChars } from "./truncation.js";
 import { validateRequiredParams } from "./validation";
+import { buildMemoryContext } from "./subagent-memory-context";
 
 interface TaskArgs {
   command?: "run" | "refresh";
@@ -50,8 +51,11 @@ interface TaskArgs {
   prompt?: string;
   description?: string;
   model?: string;
+  reasoning_effort?: string; // Reasoning effort for the subagent model (model_settings.reasoning_effort)
   agent_id?: string; // Deploy an existing agent instead of creating new
   conversation_id?: string; // Resume from an existing conversation
+  backend?: "local" | "api"; // Override backend for cross-backend agent dispatch
+  memory_blocks?: string[]; // Memory file paths to inject into the prompt
   run_in_background?: boolean; // Run the task in background
   max_turns?: number; // Maximum number of agentic turns
   toolCallId?: string; // Injected by executeTool for linking subagent to parent tool call
@@ -59,8 +63,6 @@ interface TaskArgs {
   parentScope?: { agentId: string; conversationId: string }; // Injected by executeTool for notification routing
 }
 
-// Valid subagent_types when deploying an existing agent
-const VALID_DEPLOY_TYPES = new Set(["general-purpose"]);
 const BACKGROUND_STARTUP_POLL_MS = 50;
 
 type TaskRunResult = {
@@ -82,6 +84,8 @@ export interface SpawnBackgroundSubagentTaskArgs {
   prompt: string;
   description: string;
   model?: string;
+  /** Reasoning effort for the subagent model (model_settings.reasoning_effort). */
+  reasoningEffort?: string;
   /** Replace the subagent's configured system prompt/persona (advanced). */
   systemPromptOverride?: string;
   toolCallId?: string;
@@ -89,6 +93,8 @@ export interface SpawnBackgroundSubagentTaskArgs {
   existingConversationId?: string;
   maxTurns?: number;
   forkedContext?: boolean;
+  /** Override the backend mode for cross-backend agent dispatch. */
+  backendOverride?: BackendMode;
   /** Parent conversation scope for routing notifications in listener mode. */
   parentScope?: { agentId: string; conversationId: string };
   /**
@@ -347,12 +353,14 @@ export function spawnBackgroundSubagentTask(
     prompt,
     description,
     model,
+    reasoningEffort,
     systemPromptOverride,
     toolCallId,
     existingAgentId,
     existingConversationId,
     maxTurns,
     forkedContext,
+    backendOverride,
     parentScope,
     silentCompletion,
     emitCompletionNotification,
@@ -438,6 +446,8 @@ export function spawnBackgroundSubagentTask(
     resolvedParentScope?.conversationId,
     memoryScope,
     systemPromptOverride,
+    reasoningEffort,
+    backendOverride,
   )
     .then(async (result) => {
       await copyGitHubPullRequestTagsFn(
@@ -720,11 +730,6 @@ export async function task(args: TaskArgs): Promise<string> {
     return `Error: Invalid subagent type "${subagent_type}". Available types: ${available}`;
   }
 
-  // For existing agents, only allow general-purpose
-  if (isDeployingExisting && !VALID_DEPLOY_TYPES.has(subagent_type)) {
-    return `Error: When deploying an existing agent, subagent_type must be "general-purpose". Got: "${subagent_type}"`;
-  }
-
   // If subagent config requires forked context, fork the parent conversation
   const config = allConfigs[subagent_type];
   if (!config) {
@@ -759,7 +764,44 @@ export async function task(args: TaskArgs): Promise<string> {
     }
   }
 
-  const prompt = inputPrompt;
+  // Deploy the parent agent into a new conversation (no history carried over).
+  // Unlike fork, this gives the subagent the parent's identity, system prompt,
+  // and memory — but starts with a clean conversation slate.
+  if (config.deployParent) {
+    if (args.agent_id) {
+      return "Error: Subagent type with deployParent: true cannot be combined with agent_id (the parent agent is deployed automatically)";
+    }
+    if (config.fork) {
+      return "Error: Subagent type cannot have both fork: true and deployParent: true";
+    }
+    try {
+      effectiveAgentId = getCurrentAgentId();
+      // If conversation_id is provided, resume that conversation.
+      // Otherwise, effectiveConversationId stays unset and buildSubagentArgs
+      // uses --new to create a fresh conversation for the existing agent.
+    } catch {
+      return "Error: Could not resolve parent agent ID for deployParent";
+    }
+  }
+
+  // Resolve memory blocks: runtime override takes precedence over config default
+  const effectiveMemoryBlocks = args.memory_blocks ?? config.memoryBlocks ?? [];
+  const memoryContext =
+    effectiveMemoryBlocks.length > 0
+      ? await buildMemoryContext(effectiveMemoryBlocks)
+      : null;
+
+  // When deploying the parent agent, the config body is not used as the
+  // system prompt (the agent keeps its own). Inject it as additional
+  // instructions prepended to the user prompt instead.
+  const configInstructions =
+    config.deployParent && config.systemPrompt.trim()
+      ? `<subagent_instructions>\n${config.systemPrompt.trim()}\n</subagent_instructions>\n\n`
+      : "";
+
+  const prompt = [configInstructions, memoryContext, inputPrompt]
+    .filter(Boolean)
+    .join("");
 
   const isBackground = args.run_in_background ?? config.background;
   const resolvedParentScope = resolveNotificationScope(args.parentScope);
@@ -771,11 +813,13 @@ export async function task(args: TaskArgs): Promise<string> {
       prompt,
       description,
       model,
+      reasoningEffort: args.reasoning_effort,
       toolCallId,
       existingAgentId: effectiveAgentId,
       existingConversationId: effectiveConversationId,
       maxTurns: args.max_turns,
       forkedContext: config.fork,
+      backendOverride: args.backend,
       parentScope: resolvedParentScope,
     });
 
@@ -827,13 +871,16 @@ export async function task(args: TaskArgs): Promise<string> {
       parentAgentIdForSpawn,
       undefined,
       resolvedParentScope?.conversationId,
+      undefined,
+      undefined,
+      args.reasoning_effort,
+      args.backend,
     );
 
     await copyGitHubPullRequestTags(
       result.conversationId,
       resolvedParentScope?.conversationId,
     );
-
     // Mark subagent as completed in state store
     completeSubagent(subagentId, {
       success: result.success,

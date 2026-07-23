@@ -10,6 +10,7 @@ import type {
 import type { Conversation } from "@letta-ai/letta-client/resources/conversations/conversations";
 import type { Backend } from "@/backend";
 import { getBackend } from "@/backend";
+import { resolveRegisteredPiProviderFromModelHandle } from "@/backend/dev/pi-provider-mod-registry";
 import { OPENAI_CODEX_PROVIDER_NAME } from "@/providers/openai-codex-provider";
 import { debugLog } from "@/utils/debug";
 import { OPENAI_COMPATIBLE_PROXY_UPDATE_ARG } from "@/utils/openai-endpoint";
@@ -46,6 +47,23 @@ function buildModelSettings(
     typeof updateArgs?.provider_type === "string"
       ? updateArgs.provider_type
       : undefined;
+  // Registered mod providers (e.g. clinepass, umans) are not in the builtin
+  // provider table, so the fallthrough below would mislabel them "openai".
+  // Use the mod's provider name so the stored model_settings resolve to it.
+  const modProvider = resolveRegisteredPiProviderFromModelHandle(modelHandle);
+  if (modProvider) {
+    const modSettings: Record<string, unknown> = {
+      provider_type: modProvider,
+      parallel_tool_calls: true,
+    };
+    if (updateArgs && "reasoning_effort" in updateArgs) {
+      modSettings.reasoning =
+        updateArgs.reasoning_effort === null
+          ? null
+          : { reasoning_effort: updateArgs.reasoning_effort };
+    }
+    return modSettings as ModelSettings;
+  }
   // Include ChatGPT OAuth/Codex providers, including user-defined aliases whose
   // provider_type is supplied by the server model catalog.
   const isOpenAICodex =

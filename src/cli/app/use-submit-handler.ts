@@ -33,6 +33,7 @@ import {
 } from "@/agent/memory-runtime";
 import { buildReflectionMemoryScope } from "@/agent/memory-worktree";
 import { sendMessageStreamWithBackend } from "@/agent/message";
+import type { ModelReasoningSelection } from "@/agent/model";
 import { detectPersonalityFromPersonaFile } from "@/agent/personality";
 import type { PersonalityId } from "@/agent/personality-presets";
 import { recordSessionEnd } from "@/agent/session-history";
@@ -45,6 +46,7 @@ import {
   parseModsGenerateEnvCommand,
 } from "@/cli/commands/mods";
 import type { CommandHandle } from "@/cli/commands/runner";
+import type { ModelSelectorSelection } from "@/cli/components/ModelSelector";
 import { validateAgentName } from "@/cli/components/PinDialog";
 import { type Buffers, type Line, toLines } from "@/cli/helpers/accumulator";
 import { buildChatUrl, isLocalAgentId } from "@/cli/helpers/app-urls";
@@ -190,6 +192,7 @@ type WorktreeDiffSelectorPending = {
 type ModelSelectorOptions = {
   filterProvider?: string;
   forceRefresh?: boolean;
+  target?: "agent" | "compaction";
 };
 
 async function findCustomCommandByName(
@@ -246,6 +249,20 @@ type SubmitHandlerContext = {
   ) => Promise<void>;
   handleBtwCommand: (question: string) => Promise<void>;
   handleExit: () => Promise<void>;
+  handleModelSelectRef: {
+    current:
+      | ((
+          model: string | ModelSelectorSelection,
+          commandId?: string | null,
+          opts?: {
+            promptReasoning?: boolean;
+            skipReasoningPrompt?: boolean;
+            reasoningEffort?: ModelReasoningSelection;
+            target?: "agent" | "compaction";
+          },
+        ) => Promise<void>)
+      | null;
+  };
   hasBackfilledRef: MutableRefObject<boolean>;
   isAgentBusy: () => boolean;
   isExecutingTool: boolean;
@@ -634,6 +651,7 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
     handleAgentSelect,
     handleBtwCommand,
     handleExit,
+    handleModelSelectRef,
     hasBackfilledRef,
     isAgentBusy,
     isExecutingTool,
@@ -747,6 +765,12 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
       }
 
       if (!msg && !hasOverrideContent) return { submitted: false };
+
+      // Ensure provider mods are loaded before any model resolution.
+      // The mod adapter's initial reload is fire-and-forget in a useEffect;
+      // without this gate, the first message can race ahead of provider
+      // registration and fail with "Unknown model for provider".
+      await modAdapter.waitForMods();
 
       // If the user just cycled reasoning tiers, flush the final choice before
       // sending the next message so the upcoming run uses the selected tier.
@@ -1118,6 +1142,41 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
             "/model",
             "Opening model selector...",
             "Models dialog dismissed",
+          );
+          return { submitted: true };
+        }
+
+        // Special handling for /compaction-model - sets the compaction model
+        // directly when given a handle, otherwise opens the model selector.
+        if (
+          trimmed === "/compaction-model" ||
+          trimmed.startsWith("/compaction-model ")
+        ) {
+          const args = trimmed.slice("/compaction-model".length).trim();
+          if (args.length > 0) {
+            const parts = args.split(/\s+/);
+            const modelArg = parts[0] as string;
+            const effortArg = parts[1];
+            if (effortArg !== undefined) {
+              await handleModelSelectRef.current?.(modelArg, null, {
+                skipReasoningPrompt: true,
+                reasoningEffort: effortArg as ModelReasoningSelection,
+                target: "compaction",
+              });
+            } else {
+              await handleModelSelectRef.current?.(modelArg, null, {
+                promptReasoning: true,
+                target: "compaction",
+              });
+            }
+            return { submitted: true };
+          }
+          setModelSelectorOptions({ target: "compaction" });
+          openOverlay(
+            "model",
+            "/compaction-model",
+            "Opening compaction model selector...",
+            "Compaction model dialog dismissed",
           );
           return { submitted: true };
         }

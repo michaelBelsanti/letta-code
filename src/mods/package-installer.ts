@@ -1035,10 +1035,26 @@ async function checkoutGitPackage(params: {
   return revision.stdout.trim() || "unknown";
 }
 
-export function installLocalManagedModPackage(params: {
+export async function installLocalManagedModPackage(params: {
   modsRoot: string;
   packageDirectory: string;
-}): InstallLocalManagedModPackageResult {
+}): Promise<InstallLocalManagedModPackageResult> {
+  const packageJson = readPackageJsonIfExists(params.packageDirectory);
+  if (hasRuntimeDependencies(packageJson)) {
+    const tempRoot = mkdtempSync(path.join(tmpdir(), "letta-mod-local-"));
+    try {
+      const tempPackageDir = path.join(tempRoot, "pkg");
+      copyPackageDirectory(params.packageDirectory, tempPackageDir);
+      await runNpmInstall({ tempRoot: tempPackageDir });
+      return installPreparedManagedModPackage({
+        includePackageNodeModules: true,
+        modsRoot: params.modsRoot,
+        packageDirectory: tempPackageDir,
+      });
+    } finally {
+      rmSync(tempRoot, { force: true, recursive: true });
+    }
+  }
   return installPreparedManagedModPackage(params);
 }
 

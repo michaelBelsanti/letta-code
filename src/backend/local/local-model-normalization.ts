@@ -3,7 +3,10 @@ import {
   resolveModelHandleFromLlmConfig,
 } from "@/agent/model-handles";
 import { resolveRegisteredPiProviderFromModelHandle } from "@/backend/dev/pi-provider-mod-registry";
-import { isResolvablePiModelHandle } from "@/backend/dev/pi-provider-registry";
+import {
+  isPiProvider,
+  isResolvablePiModelHandle,
+} from "@/backend/dev/pi-provider-registry";
 import { isRecord } from "@/utils/type-guards";
 
 export function supportedModelSettingsFromBody(
@@ -50,6 +53,18 @@ export function normalizeLocalModelHandle(
     return model;
   }
   const providerType = providerTypeFromModelSettings(modelSettings);
+  // A mod-provider handle that already carries its provider prefix (e.g.
+  // "clinepass/cline-pass/deepseek-v4-flash") must not be re-prefixed when
+  // the mod is not yet registered: the fallthrough would turn it into
+  // "clinepass/clinepass/cline-pass/...". Known pi providers are excluded —
+  // their stale prefixes are still re-resolved from the handle.
+  if (
+    providerType &&
+    !isPiProvider(providerType) &&
+    model.startsWith(`${providerType}/`)
+  ) {
+    return model;
+  }
   const legacyEndpointType = legacyLlmConfig?.model_endpoint_type;
   return (
     resolveModelHandleFromLlmConfig({

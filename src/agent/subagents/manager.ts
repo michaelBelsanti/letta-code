@@ -206,6 +206,8 @@ interface BuildSubagentArgsOptions {
    * to the child instead of `--system <type>`. Only applies to new agents.
    */
   systemPromptOverride?: string;
+  /** Reasoning effort for the subagent model (model_settings.reasoning_effort). */
+  reasoningEffort?: string | null;
 }
 
 /**
@@ -266,6 +268,12 @@ export function buildSubagentArgs(
     // flag needed, and no user-facing opt-out exists.
     if (model) {
       args.push("--model", model);
+    }
+    if (options.reasoningEffort) {
+      args.push(
+        "--model-settings",
+        JSON.stringify({ reasoning_effort: options.reasoningEffort }),
+      );
     }
 
     // Reflection-specific startup flags: match the memory_reflection training
@@ -356,6 +364,8 @@ async function executeSubagent(
   transcriptPath?: string,
   memoryScope?: SubagentMemoryScope,
   systemPromptOverride?: string,
+  reasoningEffort?: string | null,
+  backendOverride?: BackendMode,
 ): Promise<SubagentResult> {
   const withModel = (result: SubagentResult): SubagentResult =>
     model ? { ...result, model } : result;
@@ -377,9 +387,9 @@ async function executeSubagent(
 
   try {
     const activeBackend = getBackend();
-    const backendMode: BackendMode = activeBackend.capabilities.localMemfs
-      ? "local"
-      : "api";
+    const backendMode: BackendMode =
+      backendOverride ??
+      (activeBackend.capabilities.localMemfs ? "local" : "api");
     const boundedUserPrompt = buildSubagentPrompt(type, config, userPrompt);
 
     let parentAgentId = parentAgentIdOverride;
@@ -404,6 +414,7 @@ async function executeSubagent(
         promptTransport: "stdin",
         parentAgentId,
         systemPromptOverride,
+        reasoningEffort: reasoningEffort ?? config.reasoningEffort,
       },
     );
 
@@ -819,6 +830,8 @@ export async function spawnSubagent(
   parentConversationId?: string,
   memoryScope?: SubagentMemoryScope,
   systemPromptOverride?: string,
+  reasoningEffort?: string | null,
+  backendOverride?: BackendMode,
 ): Promise<SubagentResult> {
   const allConfigs = await getAllSubagentConfigs();
   const config = allConfigs[type];
@@ -837,9 +850,9 @@ export async function spawnSubagent(
   );
 
   const activeBackend = getBackend();
-  const backendMode: BackendMode = activeBackend.capabilities.localMemfs
-    ? "local"
-    : "api";
+  const backendMode: BackendMode =
+    backendOverride ??
+    (activeBackend.capabilities.localMemfs ? "local" : "api");
   // Resolve parent scope before model selection so local subagents inherit the
   // active conversation's model override, not just the agent default.
   let resolvedParentAgentId = parentAgentId;
@@ -936,6 +949,8 @@ export async function spawnSubagent(
     transcriptPath,
     memoryScope,
     systemPromptOverride,
+    reasoningEffort ?? config.reasoningEffort,
+    backendOverride,
   );
 
   return result;

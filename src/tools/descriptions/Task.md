@@ -39,6 +39,10 @@ When deploying an existing agent, only `general-purpose` is supported: full read
 
 ### Parameters
 
+- **reasoning_effort**: Optional reasoning effort for the subagent's model (none, minimal, low, medium, high, xhigh, max)
+  - Overrides the subagent config's `reasoning_effort` and the model default
+  - Use "none" to disable reasoning for cheap/fast tasks; "high"/"xhigh"/"max" for hard problems
+
 - **agent_id**: The ID of an existing agent to deploy (e.g., "agent-abc123")
   - Starts a new conversation with that agent
   - The agent keeps its own system prompt and memory

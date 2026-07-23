@@ -112,8 +112,9 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
         let nextCursorWidth = 0;
         let nextKillBuffer = killBuffer;
         if (key.leftArrow || key.rightArrow) {
-            // Skip if meta is pressed - Option+Arrow is handled by parent for word navigation
-            if (key.meta) {
+            // Skip if meta or ctrl is pressed - Option+Arrow and Ctrl+Arrow are handled
+            // by parent for word navigation
+            if (key.meta || key.ctrl) {
                 return;
             }
             if (showCursor) {
@@ -130,8 +131,10 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
                 return;
             }
             if (cursorOffset > 0) {
-                nextValue = originalValue.slice(0, cursorOffset - 1) + originalValue.slice(cursorOffset, originalValue.length);
-                nextCursorOffset--;
+                // Support repeat count for coalesced backspace bytes (mobile SSH)
+                const deleteCount = Math.min(key.repeat || 1, cursorOffset);
+                nextValue = originalValue.slice(0, cursorOffset - deleteCount) + originalValue.slice(cursorOffset, originalValue.length);
+                nextCursorOffset -= deleteCount;
             }
         }
         else if (key.ctrl && input === 'a') {
@@ -154,11 +157,17 @@ function TextInput({ value: originalValue, placeholder = '', focus = true, mask,
             }
         }
         else if (key.ctrl && input === 'u') {
-            // CTRL-U: kill from beginning to cursor
+            // CTRL-U: kill from line start to cursor. At line start, kill the
+            // preceding newline to join with the previous line.
             if (cursorOffset > 0) {
-                nextKillBuffer = originalValue.slice(0, cursorOffset);
-                nextValue = originalValue.slice(cursorOffset);
-                nextCursorOffset = 0;
+                let lineStart = originalValue.lastIndexOf('\n', cursorOffset - 1) + 1;
+                if (lineStart === cursorOffset && cursorOffset > 0) {
+                    // Cursor at start of line — kill the preceding newline
+                    lineStart = cursorOffset - 1;
+                }
+                nextKillBuffer = originalValue.slice(lineStart, cursorOffset);
+                nextValue = originalValue.slice(0, lineStart) + originalValue.slice(cursorOffset);
+                nextCursorOffset = lineStart;
             }
         }
         else if (key.ctrl && input === 'y') {

@@ -149,6 +149,15 @@ export const commands: Record<string, Command> = {
       return "Opening compaction settings...";
     },
   },
+  "/compaction-model": {
+    desc: "Set the model used for compaction summarization",
+    args: "[model_handle] [reasoning_effort]",
+    order: 15.65,
+    handler: () => {
+      // Handled specially in App.tsx to open model selector for compaction
+      return "Opening compaction model selector...";
+    },
+  },
   "/context-limit": {
     desc: "Set or reset the max context window",
     args: "[tokens] [--override]",

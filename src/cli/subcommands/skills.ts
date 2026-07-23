@@ -1109,7 +1109,7 @@ async function runInstall(
       return 1;
     }
     try {
-      const result = installLocalManagedModPackage({
+      const result = await installLocalManagedModPackage({
         modsRoot:
           options.globalModsDirectory ?? resolveDefaultGlobalModsDirectory(),
         packageDirectory: maybeLocalPath,

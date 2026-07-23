@@ -107,6 +107,8 @@ import type {
 type ModelSelectorOptions = {
   filterProvider?: string;
   forceRefresh?: boolean;
+  /** When "compaction", selection writes to compaction_settings instead of the agent model. */
+  target?: "agent" | "compaction";
 };
 
 type ModelReasoningPrompt = {
@@ -219,6 +221,7 @@ type AppViewProps = {
       promptReasoning?: boolean;
       skipReasoningPrompt?: boolean;
       reasoningEffort?: ModelReasoningSelection;
+      target?: "agent" | "compaction";
     },
   ) => Promise<void>;
   handlePasteError: (message: string) => void;
@@ -801,6 +804,7 @@ export function AppView(props: AppViewProps) {
                       {
                         skipReasoningPrompt: true,
                         reasoningEffort: selectedOption.effort,
+                        target: modelSelectorOptions.target,
                       },
                     );
                   }}
@@ -814,6 +818,7 @@ export function AppView(props: AppViewProps) {
                   onSelect={(selection) => {
                     void handleModelSelect(selection, null, {
                       promptReasoning: true,
+                      target: modelSelectorOptions.target,
                     });
                   }}
                   onOpenConnect={() => {

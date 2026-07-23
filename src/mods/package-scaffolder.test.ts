@@ -103,7 +103,7 @@ describe("local mod package scaffolder", () => {
     expect(existsSync(path.join(result.outputDirectory, "MOD.md"))).toBe(true);
   });
 
-  test("created package can be installed by local package installer", () => {
+  test("created package can be installed by local package installer", async () => {
     const root = createTempDir();
     const sourceFile = path.join(root, "tool.mjs");
     const outputDirectory = path.join(root, "tool-package");
@@ -115,7 +115,7 @@ describe("local mod package scaffolder", () => {
       packageName: "tool-package",
       sourceFile,
     });
-    const installResult = installLocalManagedModPackage({
+    const installResult = await installLocalManagedModPackage({
       modsRoot,
       packageDirectory: outputDirectory,
     });

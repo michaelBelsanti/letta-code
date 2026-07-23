@@ -9,6 +9,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ModelReasoningSelection } from "@/agent/model";
 import { getBackend } from "@/backend";
 import { getErrorMessage } from "@/utils/error";
 import {
@@ -90,10 +91,19 @@ export interface SubagentConfig {
   recommendedModel: string;
   /** Whether the recommended model came from bundled defaults or user config. */
   recommendedModelSource?: SubagentRecommendedModelSource;
+  /** Reasoning effort for the subagent model (model_settings.reasoning_effort). */
+  reasoningEffort?: ModelReasoningSelection | null;
   /** Skills to auto-load */
   skills: string[];
+  /** Memory file paths to inject into the subagent's prompt as context.
+   * Can be overridden at dispatch time via the Task tool's memory_blocks param. */
+  memoryBlocks: string[];
   /** Whether this subagent should fork the parent conversation before launch. */
   fork: boolean;
+  /** Whether to deploy the parent agent into a new conversation (no history).
+   * Unlike fork, the parent agent is deployed as-is but starts fresh — no
+   * conversation history is carried over. */
+  deployParent: boolean;
   /** Whether this subagent should run in the background by default. */
   background: boolean;
   /** Filesystem and env launch behavior for this subagent. */
@@ -182,10 +192,27 @@ function parseSkills(skillsStr: string | undefined): string[] {
   return parseCommaSeparatedList(skillsStr);
 }
 
+/**
+ * Parse comma-separated memory block file paths
+ */
+function parseMemoryBlocks(memoryBlocksStr: string | undefined): string[] {
+  return parseCommaSeparatedList(memoryBlocksStr);
+}
+
 function parseLaunchProfile(
   launchProfile: string | undefined,
 ): SubagentLaunchProfile {
   return launchProfile === "memory-subagent" ? "memory-subagent" : "default";
+}
+
+function parseReasoningEffort(
+  value: string | undefined,
+): ModelReasoningSelection | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === "none" || value === "off") return "none";
+  return ["minimal", "low", "medium", "high", "xhigh", "max"].includes(value)
+    ? (value as ModelReasoningSelection)
+    : null;
 }
 
 function parseBackgroundDefault(background: string | undefined): boolean {
@@ -268,6 +295,9 @@ function applySubagentOverlay(
     recommendedModelSource: hasModel
       ? modelSource
       : inherited.recommendedModelSource,
+    reasoningEffort: hasFrontmatterField(frontmatter, "reasoning_effort")
+      ? parseReasoningEffort(getStringField(frontmatter, "reasoning_effort"))
+      : inherited.reasoningEffort,
     skills: hasFrontmatterField(frontmatter, "skills")
       ? parseSkills(getStringField(frontmatter, "skills"))
       : [...inherited.skills],
@@ -329,8 +359,16 @@ function parseSubagentContent(
     allowedTools: parseTools(getStringField(frontmatter, "tools")),
     recommendedModel: getStringField(frontmatter, "model") || "inherit",
     recommendedModelSource: hasModel ? options.modelSource : undefined,
+    reasoningEffort: parseReasoningEffort(
+      getStringField(frontmatter, "reasoning_effort"),
+    ),
     skills: parseSkills(getStringField(frontmatter, "skills")),
+    memoryBlocks: parseMemoryBlocks(
+      getStringField(frontmatter, "memoryBlocks"),
+    ),
     fork: getStringField(frontmatter, "fork")?.toLowerCase() === "true",
+    deployParent:
+      getStringField(frontmatter, "deployParent")?.toLowerCase() === "true",
     background: parseBackgroundDefault(
       getStringField(frontmatter, "background"),
     ),

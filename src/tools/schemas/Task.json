@@ -17,6 +17,11 @@
       "type": "string",
       "description": "Optional model to use for this agent. If not specified, inherits from parent. Prefer lighter models for quick, straightforward tasks to minimize cost and latency."
     },
+    "reasoning_effort": {
+      "type": "string",
+      "enum": ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+      "description": "Optional reasoning effort for the subagent's model. If not specified, uses the subagent config's reasoning_effort or the model default."
+    },
     "run_in_background": {
       "type": "boolean",
       "description": "Defaults to true. Set to false only when you must block and wait for the agent's final report inline. Background runs return a task ID/output file and deliver a task notification on completion."
@@ -28,6 +33,16 @@
     "conversation_id": {
       "type": "string",
       "description": "Resume from an existing conversation. Does NOT require agent_id (conversation IDs are unique and encode the agent)."
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["local", "api"],
+      "description": "Override the backend used for the subagent child process. By default the subagent inherits the parent's backend. Set to \"local\" when a cloud agent needs to deploy a local agent (agent_id starting with \"agent-local-\"). Only meaningful with agent_id."
+    },
+    "memory_blocks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Memory file paths to inject into the subagent's prompt as context. Overrides the subagent config's memoryBlocks default. Only supported by subagent types that declare memoryBlocks in their frontmatter."
     }
   },
   "required": ["description", "prompt", "subagent_type"],
