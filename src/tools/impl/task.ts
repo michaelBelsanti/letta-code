@@ -20,7 +20,7 @@ import {
   type SubagentMemoryScope,
 } from "@/agent/subagents";
 import { spawnSubagent } from "@/agent/subagents/manager";
-import { getBackend } from "@/backend";
+import { type BackendMode, getBackend } from "@/backend";
 import { runSubagentStopHooks } from "@/hooks";
 import { getCurrentWorkingDirectory } from "@/runtime-context";
 import { settingsManager } from "@/settings-manager";
@@ -52,6 +52,7 @@ interface TaskArgs {
   model?: string;
   agent_id?: string; // Deploy an existing agent instead of creating new
   conversation_id?: string; // Resume from an existing conversation
+  backend?: "local" | "api"; // Override backend for cross-backend agent dispatch
   run_in_background?: boolean; // Run the task in background
   max_turns?: number; // Maximum number of agentic turns
   toolCallId?: string; // Injected by executeTool for linking subagent to parent tool call
@@ -89,6 +90,8 @@ export interface SpawnBackgroundSubagentTaskArgs {
   existingConversationId?: string;
   maxTurns?: number;
   forkedContext?: boolean;
+  /** Override the backend mode for cross-backend agent dispatch. */
+  backendOverride?: BackendMode;
   /** Parent conversation scope for routing notifications in listener mode. */
   parentScope?: { agentId: string; conversationId: string };
   /**
@@ -353,6 +356,7 @@ export function spawnBackgroundSubagentTask(
     existingConversationId,
     maxTurns,
     forkedContext,
+    backendOverride,
     parentScope,
     silentCompletion,
     emitCompletionNotification,
@@ -438,6 +442,7 @@ export function spawnBackgroundSubagentTask(
     resolvedParentScope?.conversationId,
     memoryScope,
     systemPromptOverride,
+    backendOverride,
   )
     .then(async (result) => {
       await copyGitHubPullRequestTagsFn(
@@ -754,6 +759,26 @@ export async function task(args: TaskArgs): Promise<string> {
     }
   }
 
+  // Deploy the parent agent into a new conversation (no history carried over).
+  // Unlike fork, this gives the subagent the parent's identity, system prompt,
+  // and memory — but starts with a clean conversation slate.
+  if (config.deployParent) {
+    if (args.agent_id) {
+      return "Error: Subagent type with deployParent: true cannot be combined with agent_id (the parent agent is deployed automatically)";
+    }
+    if (config.fork) {
+      return "Error: Subagent type cannot have both fork: true and deployParent: true";
+    }
+    try {
+      effectiveAgentId = getCurrentAgentId();
+      // If conversation_id is provided, resume that conversation.
+      // Otherwise, effectiveConversationId stays unset and buildSubagentArgs
+      // uses --new to create a fresh conversation for the existing agent.
+    } catch {
+      return "Error: Could not resolve parent agent ID for deployParent";
+    }
+  }
+
   const prompt = inputPrompt;
 
   const isBackground = args.run_in_background ?? config.background;
@@ -771,6 +796,7 @@ export async function task(args: TaskArgs): Promise<string> {
       existingConversationId: effectiveConversationId,
       maxTurns: args.max_turns,
       forkedContext: config.fork,
+      backendOverride: args.backend,
       parentScope: resolvedParentScope,
     });
 
@@ -822,6 +848,9 @@ export async function task(args: TaskArgs): Promise<string> {
       parentAgentIdForSpawn,
       undefined,
       resolvedParentScope?.conversationId,
+      undefined,
+      undefined,
+      args.backend,
     );
 
     await copyGitHubPullRequestTags(

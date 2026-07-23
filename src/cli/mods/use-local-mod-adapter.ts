@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { getBackend } from "@/backend";
 import { getClient } from "@/backend/api/client";
 import {
@@ -18,6 +18,12 @@ export interface LocalModAdapter {
   isLoading: boolean;
   registry: ModAdapterSnapshot["registry"];
   reload: () => Promise<void>;
+  /**
+   * Resolves once the initial mod load has completed (or failed).
+   * Callers should await this before resolving model handles that may
+   * depend on provider-mod registrations.
+   */
+  waitForMods: () => Promise<void>;
 }
 
 export function useLocalModAdapter(
@@ -48,8 +54,12 @@ export function useLocalModAdapter(
     adapter.getSnapshot,
   );
 
+  const initialLoadRef = useRef<Promise<void>>(Promise.resolve());
+
   useEffect(() => {
-    void adapter.reload();
+    initialLoadRef.current = adapter.reload().catch(() => {
+      // Mod loading errors should not block message sending.
+    });
 
     return () => {
       adapter.dispose();
@@ -67,6 +77,7 @@ export function useLocalModAdapter(
       isLoading: snapshot.isLoading,
       registry: snapshot.registry,
       reload: adapter.reload,
+      waitForMods: () => initialLoadRef.current,
     }),
     [adapter, context, snapshot],
   );

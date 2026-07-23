@@ -94,6 +94,10 @@ export interface SubagentConfig {
   skills: string[];
   /** Whether this subagent should fork the parent conversation before launch. */
   fork: boolean;
+  /** Whether to deploy the parent agent into a new conversation (no history).
+   * Unlike fork, the parent agent is deployed as-is but starts fresh — no
+   * conversation history is carried over. */
+  deployParent: boolean;
   /** Whether this subagent should run in the background by default. */
   background: boolean;
   /** Filesystem and env launch behavior for this subagent. */
@@ -331,6 +335,8 @@ function parseSubagentContent(
     recommendedModelSource: hasModel ? options.modelSource : undefined,
     skills: parseSkills(getStringField(frontmatter, "skills")),
     fork: getStringField(frontmatter, "fork")?.toLowerCase() === "true",
+    deployParent:
+      getStringField(frontmatter, "deployParent")?.toLowerCase() === "true",
     background: parseBackgroundDefault(
       getStringField(frontmatter, "background"),
     ),

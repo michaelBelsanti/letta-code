@@ -28,6 +28,11 @@
     "conversation_id": {
       "type": "string",
       "description": "Resume from an existing conversation. Does NOT require agent_id (conversation IDs are unique and encode the agent)."
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["local", "api"],
+      "description": "Override the backend used for the subagent child process. By default the subagent inherits the parent's backend. Set to \"local\" when a cloud agent needs to deploy a local agent (agent_id starting with \"agent-local-\"). Only meaningful with agent_id."
     }
   },
   "required": ["description", "prompt", "subagent_type"],

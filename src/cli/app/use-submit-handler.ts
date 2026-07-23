@@ -748,6 +748,12 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
 
       if (!msg && !hasOverrideContent) return { submitted: false };
 
+      // Ensure provider mods are loaded before any model resolution.
+      // The mod adapter's initial reload is fire-and-forget in a useEffect;
+      // without this gate, the first message can race ahead of provider
+      // registration and fail with "Unknown model for provider".
+      await modAdapter.waitForMods();
+
       // If the user just cycled reasoning tiers, flush the final choice before
       // sending the next message so the upcoming run uses the selected tier.
       await flushPendingReasoningEffort();
