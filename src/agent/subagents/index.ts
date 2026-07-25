@@ -92,6 +92,9 @@ export interface SubagentConfig {
   recommendedModelSource?: SubagentRecommendedModelSource;
   /** Skills to auto-load */
   skills: string[];
+  /** Memory file paths to inject into the subagent's prompt as context.
+   * Can be overridden at dispatch time via the Task tool's memory_blocks param. */
+  memoryBlocks: string[];
   /** Whether this subagent should fork the parent conversation before launch. */
   fork: boolean;
   /** Whether to deploy the parent agent into a new conversation (no history).
@@ -184,6 +187,13 @@ function parseTools(toolsStr: string | undefined): string[] | "all" {
  */
 function parseSkills(skillsStr: string | undefined): string[] {
   return parseCommaSeparatedList(skillsStr);
+}
+
+/**
+ * Parse comma-separated memory block file paths
+ */
+function parseMemoryBlocks(memoryBlocksStr: string | undefined): string[] {
+  return parseCommaSeparatedList(memoryBlocksStr);
 }
 
 function parseLaunchProfile(
@@ -334,6 +344,9 @@ function parseSubagentContent(
     recommendedModel: getStringField(frontmatter, "model") || "inherit",
     recommendedModelSource: hasModel ? options.modelSource : undefined,
     skills: parseSkills(getStringField(frontmatter, "skills")),
+    memoryBlocks: parseMemoryBlocks(
+      getStringField(frontmatter, "memoryBlocks"),
+    ),
     fork: getStringField(frontmatter, "fork")?.toLowerCase() === "true",
     deployParent:
       getStringField(frontmatter, "deployParent")?.toLowerCase() === "true",

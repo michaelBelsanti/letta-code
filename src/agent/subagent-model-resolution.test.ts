@@ -303,6 +303,7 @@ describe("buildSubagentArgs", () => {
     allowedTools: "all",
     recommendedModel: "inherit",
     skills: [],
+    memoryBlocks: [],
     fork: false,
     deployParent: false,
     background: false,

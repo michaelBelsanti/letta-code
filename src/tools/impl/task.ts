@@ -5,6 +5,7 @@
  * Supports both built-in subagent types and custom subagents defined in .letta/agents/.
  */
 
+import { readFile } from "node:fs/promises";
 import { getConversationId, getCurrentAgentId } from "@/agent/context";
 import {
   completeSubagent,
@@ -44,6 +45,31 @@ import {
 import { LIMITS, truncateByChars } from "./truncation.js";
 import { validateRequiredParams } from "./validation";
 
+/**
+ * Read memory block files and wrap their contents in a context block
+ * to prepend to the subagent's prompt.
+ */
+async function buildMemoryContext(
+  memoryBlocks: string[],
+): Promise<string | null> {
+  const files: Array<{ path: string; content: string }> = [];
+  for (const filePath of memoryBlocks) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      files.push({ path: filePath, content });
+    } catch {
+      // Skip files that can't be read — don't fail the entire dispatch
+    }
+  }
+  if (files.length === 0) {
+    return null;
+  }
+  const sections = files
+    .map((f) => `<file path="${f.path}">\n${f.content}\n</file>`)
+    .join("\n");
+  return `<memory_context>\n${sections}\n</memory_context>\n\n`;
+}
+
 interface TaskArgs {
   command?: "run" | "refresh";
   subagent_type?: string;
@@ -53,6 +79,7 @@ interface TaskArgs {
   agent_id?: string; // Deploy an existing agent instead of creating new
   conversation_id?: string; // Resume from an existing conversation
   backend?: "local" | "api"; // Override backend for cross-backend agent dispatch
+  memory_blocks?: string[]; // Memory file paths to inject into the prompt
   run_in_background?: boolean; // Run the task in background
   max_turns?: number; // Maximum number of agentic turns
   toolCallId?: string; // Injected by executeTool for linking subagent to parent tool call
@@ -60,8 +87,6 @@ interface TaskArgs {
   parentScope?: { agentId: string; conversationId: string }; // Injected by executeTool for notification routing
 }
 
-// Valid subagent_types when deploying an existing agent
-const VALID_DEPLOY_TYPES = new Set(["general-purpose"]);
 const BACKGROUND_STARTUP_POLL_MS = 50;
 
 type TaskRunResult = {
@@ -720,11 +745,6 @@ export async function task(args: TaskArgs): Promise<string> {
     return `Error: Invalid subagent type "${subagent_type}". Available types: ${available}`;
   }
 
-  // For existing agents, only allow general-purpose
-  if (isDeployingExisting && !VALID_DEPLOY_TYPES.has(subagent_type)) {
-    return `Error: When deploying an existing agent, subagent_type must be "general-purpose". Got: "${subagent_type}"`;
-  }
-
   // If subagent config requires forked context, fork the parent conversation
   const config = allConfigs[subagent_type];
   if (!config) {
@@ -779,7 +799,24 @@ export async function task(args: TaskArgs): Promise<string> {
     }
   }
 
-  const prompt = inputPrompt;
+  // Resolve memory blocks: runtime override takes precedence over config default
+  const effectiveMemoryBlocks = args.memory_blocks ?? config.memoryBlocks ?? [];
+  const memoryContext =
+    effectiveMemoryBlocks.length > 0
+      ? await buildMemoryContext(effectiveMemoryBlocks)
+      : null;
+
+  // When deploying the parent agent, the config body is not used as the
+  // system prompt (the agent keeps its own). Inject it as additional
+  // instructions prepended to the user prompt instead.
+  const configInstructions =
+    config.deployParent && config.systemPrompt.trim()
+      ? `<subagent_instructions>\n${config.systemPrompt.trim()}\n</subagent_instructions>\n\n`
+      : "";
+
+  const prompt = [configInstructions, memoryContext, inputPrompt]
+    .filter(Boolean)
+    .join("");
 
   const isBackground = args.run_in_background ?? config.background;
   const resolvedParentScope = resolveNotificationScope(args.parentScope);
