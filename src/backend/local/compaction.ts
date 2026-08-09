@@ -124,6 +124,8 @@ export interface LocalAllCompactionInput {
   abortSignal?: AbortSignal;
   localProviderAuthStorageDir?: string;
   modelsRuntime?: LocalPiModelsRuntime;
+  compactionModel?: string | null;
+  compactionModelSettings?: Record<string, unknown> | null;
 }
 
 export interface LocalSlidingWindowCompactionPlan {
@@ -400,6 +402,48 @@ function fableCompactionSummaryFallbackSettings(
   };
 }
 
+/** Prefer the configured compaction model; fall back to the turn model when unset or unresolvable. */
+async function resolveCompactionOrTurnModel(
+  input: LocalAllCompactionInput,
+  modelsRuntime: LocalPiModelsRuntime,
+): Promise<{ model?: string; modelSettings: Record<string, unknown> }> {
+  const turnModel = () =>
+    resolveAvailableLocalModelForTurn({
+      model: input.agent.model,
+      modelSettings: input.agent.model_settings,
+      storageDir: input.localProviderAuthStorageDir,
+      modelsRuntime,
+    });
+
+  if (
+    typeof input.compactionModel !== "string" ||
+    !input.compactionModel.trim()
+  ) {
+    return turnModel();
+  }
+
+  const compactionSettings =
+    input.compactionModelSettings ?? input.agent.model_settings ?? {};
+  const compactionCandidate = {
+    model: input.compactionModel,
+    modelSettings: { ...compactionSettings },
+  };
+  try {
+    await resolvePiModelForAgent(
+      compactionCandidate.model,
+      compactionCandidate.modelSettings,
+      {
+        localProviderAuthStorageDir: input.localProviderAuthStorageDir,
+        modelsRuntime,
+      },
+    );
+    return compactionCandidate;
+  } catch {
+    // Unresolvable compaction handle: fall back to the conversation model.
+    return turnModel();
+  }
+}
+
 async function runGenerateText(
   input: LocalAllCompactionInput,
   transcript: string,
@@ -411,12 +455,8 @@ async function runGenerateText(
     new LocalPiModelsRuntime({
       storageDir: input.localProviderAuthStorageDir,
     });
-  let localModel = await resolveAvailableLocalModelForTurn({
-    model: input.agent.model,
-    modelSettings: input.agent.model_settings,
-    storageDir: input.localProviderAuthStorageDir,
-    modelsRuntime,
-  });
+
+  let localModel = await resolveCompactionOrTurnModel(input, modelsRuntime);
   let resolved = await resolvePiModelForAgent(
     localModel.model,
     localModel.modelSettings,

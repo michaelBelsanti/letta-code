@@ -134,4 +134,94 @@ describe("local compaction summarizer options", () => {
       await rm(storageDir, { recursive: true, force: true });
     }
   });
+
+  test("uses the configured compaction model instead of the conversation model", async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), "local-compaction-"));
+    try {
+      await createOrUpdateLocalProvider({
+        storageDir,
+        providerType: "opencode-go",
+        providerName: "opencode-go",
+        apiKey: "secret-key",
+      });
+
+      let capturedModelId: string | undefined;
+      await summarizeLocalMessagesAll({
+        agent: {
+          id: "agent-local-1",
+          name: "Local",
+          description: null,
+          system: "",
+          tags: [],
+          model: "anthropic/claude-sonnet-4-6",
+          model_settings: {
+            provider_type: "anthropic",
+          },
+        },
+        messages: [
+          {
+            id: "ui-msg-1",
+            role: "user",
+            content: "please summarize this conversation",
+            timestamp: Date.now(),
+          },
+        ],
+        localProviderAuthStorageDir: storageDir,
+        compactionModel: "opencode-go/deepseek-v4-flash",
+        complete: async (model, _context, _options) => {
+          capturedModelId = model.id;
+          return summaryAssistantMessage();
+        },
+      });
+
+      expect(capturedModelId).toBe("deepseek-v4-flash");
+    } finally {
+      await rm(storageDir, { recursive: true, force: true });
+    }
+  });
+
+  test("falls back to the conversation model when the compaction model is unresolvable", async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), "local-compaction-"));
+    try {
+      await createOrUpdateLocalProvider({
+        storageDir,
+        providerType: "opencode-go",
+        providerName: "opencode-go",
+        apiKey: "secret-key",
+      });
+
+      let capturedModelId: string | undefined;
+      await summarizeLocalMessagesAll({
+        agent: {
+          id: "agent-local-1",
+          name: "Local",
+          description: null,
+          system: "",
+          tags: [],
+          model: "opencode-go/deepseek-v4-flash",
+          model_settings: {
+            provider_type: "opencode-go",
+          },
+        },
+        messages: [
+          {
+            id: "ui-msg-1",
+            role: "user",
+            content: "please summarize this conversation",
+            timestamp: Date.now(),
+          },
+        ],
+        localProviderAuthStorageDir: storageDir,
+        compactionModel: "opencode-go/nonexistent-model",
+        complete: async (model, _context, _options) => {
+          capturedModelId = model.id;
+          return summaryAssistantMessage();
+        },
+      });
+
+      expect(capturedModelId).toBe("deepseek-v4-flash");
+    } finally {
+      await rm(storageDir, { recursive: true, force: true });
+    }
+  });
 });

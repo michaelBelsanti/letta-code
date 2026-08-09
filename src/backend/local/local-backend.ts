@@ -177,6 +177,8 @@ interface ResolvedLocalCompactionSettings {
   prompt?: string | null;
   clipChars?: number | null;
   slidingWindowPercentage: number;
+  model?: string | null;
+  modelSettings?: Record<string, unknown> | null;
 }
 
 function compactionSettingsRecord(
@@ -737,6 +739,14 @@ export class LocalBackend extends HeadlessBackend {
         typeof mergedSettings.sliding_window_percentage === "number"
           ? mergedSettings.sliding_window_percentage
           : LOCAL_DEFAULT_SLIDING_WINDOW_PERCENTAGE,
+      model:
+        typeof mergedSettings.model === "string" &&
+        mergedSettings.model.trim().length > 0
+          ? mergedSettings.model.trim()
+          : undefined,
+      modelSettings: isRecord(mergedSettings.model_settings)
+        ? mergedSettings.model_settings
+        : undefined,
     };
   }
 
@@ -848,6 +858,8 @@ export class LocalBackend extends HeadlessBackend {
       clipChars: settings.clipChars,
       localProviderAuthStorageDir: this.storageDir,
       modelsRuntime: this.piModelsRuntime,
+      compactionModel: settings.model,
+      compactionModelSettings: settings.modelSettings,
     });
     const stats: LocalCompactionStats = {
       trigger,
@@ -901,6 +913,8 @@ export class LocalBackend extends HeadlessBackend {
       clipChars: settings.clipChars,
       localProviderAuthStorageDir: this.storageDir,
       modelsRuntime: this.piModelsRuntime,
+      compactionModel: settings.model,
+      compactionModelSettings: settings.modelSettings,
     });
     const contextTokensAfter =
       Math.ceil(summary.length / 4) +

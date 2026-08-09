@@ -21,7 +21,7 @@ import {
   getPersonalityOption,
   type PersonalityId,
 } from "@/agent/personality-presets";
-import { getBackend } from "@/backend";
+import { type AgentUpdateBody, getBackend } from "@/backend";
 import { getClient } from "@/backend/api/client";
 import type { ModelSelectorSelection } from "@/cli/components/ModelSelector";
 import {
@@ -168,6 +168,8 @@ export function useConfigurationHandlers(ctx: ConfigurationHandlersContext) {
         promptReasoning?: boolean;
         skipReasoningPrompt?: boolean;
         reasoningEffort?: ModelReasoningSelection;
+        /** When "compaction", write the selection to compaction_settings instead of the agent model. */
+        target?: "agent" | "compaction";
       },
     ) => {
       const inputSelection = typeof model === "string" ? null : model;
@@ -496,6 +498,58 @@ export function useConfigurationHandlers(ctx: ConfigurationHandlersContext) {
             : undefined;
 
         await withCommandLock(async () => {
+          if (opts?.target === "compaction") {
+            const cmd =
+              resolveOverlayCommand() ??
+              commandRunner.start(
+                "/compaction-model",
+                `Setting compaction model to ${model.label}...`,
+              );
+            cmd.update({
+              output: `Setting compaction model to ${model.label}...`,
+              phase: "running",
+            });
+
+            const rawEffort = modelUpdateArgs?.reasoning_effort;
+            const reasoningEffort =
+              typeof rawEffort === "string" ? rawEffort : null;
+            const existingCompaction = agentState?.compaction_settings as
+              | Record<string, unknown>
+              | null
+              | undefined;
+            const existingModelSettings = existingCompaction?.model_settings;
+            const modelSettings = {
+              ...(existingModelSettings &&
+              typeof existingModelSettings === "object" &&
+              !Array.isArray(existingModelSettings)
+                ? existingModelSettings
+                : {}),
+              ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
+            } as NonNullable<
+              AgentUpdateBody["compaction_settings"]
+            >["model_settings"];
+            const nextCompactionSettings = {
+              ...(existingCompaction ?? {}),
+              model: modelHandle,
+              model_settings: modelSettings,
+            };
+            await getBackend().updateAgent(agentIdRef.current, {
+              compaction_settings: nextCompactionSettings,
+            });
+            setAgentState((prev) =>
+              prev
+                ? { ...prev, compaction_settings: nextCompactionSettings }
+                : prev,
+            );
+
+            cmd.finish(
+              `Compaction model set to ${model.label}` +
+                (reasoningEffort ? ` (${reasoningEffort} reasoning)` : ""),
+              true,
+            );
+            return;
+          }
+
           const cmd =
             resolveOverlayCommand() ??
             commandRunner.start(
@@ -697,6 +751,7 @@ export function useConfigurationHandlers(ctx: ConfigurationHandlersContext) {
     [
       activeOverlay,
       agentId,
+      agentState,
       commandRunner,
       consumeOverlayCommand,
       currentModelHandle,

@@ -4206,6 +4206,20 @@ export function App({
     }
   }, [reflectionArenaChoicePending, appendTaskNotificationEvents]);
 
+  const handleModelSelectRef = useRef<
+    | ((
+        model: string | ModelSelectorSelection,
+        commandId?: string | null,
+        opts?: {
+          promptReasoning?: boolean;
+          skipReasoningPrompt?: boolean;
+          reasoningEffort?: ModelReasoningSelection;
+          target?: "agent" | "compaction";
+        },
+      ) => Promise<void>)
+    | null
+  >(null);
+
   const onSubmit = useSubmitHandler({
     abortControllerRef,
     agentDescription,
@@ -4216,6 +4230,7 @@ export function App({
     agentState,
     agentStateRef,
     appendTaskNotificationEvents,
+    handleModelSelectRef,
     bashCommandCacheRef,
     buffersRef,
     checkPendingApprovalsForSlashCommand,
@@ -4469,6 +4484,8 @@ export function App({
     setTempModelOverride,
     withCommandLock,
   });
+
+  handleModelSelectRef.current = handleModelSelect;
 
   // Process queued overlay actions when streaming ends
   // These are actions from interactive commands (like /agents, /model) that were
