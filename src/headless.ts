@@ -841,6 +841,18 @@ export async function handleHeadlessCommand(
   const systemCustom = values["system-custom"];
   const personalityInput = values.personality;
   const embeddingModel = values.embedding;
+  const modelSettingsArg = values["model-settings"];
+  let modelSettingsOverride: Record<string, unknown> | undefined;
+  if (typeof modelSettingsArg === "string" && modelSettingsArg.length > 0) {
+    try {
+      modelSettingsOverride = JSON.parse(modelSettingsArg) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      // Malformed --model-settings: fall back to the model's default settings.
+    }
+  }
   const baseToolsRaw = values["base-tools"];
   const skillsDirectory = values.skills ?? skillsDirectoryOverride;
   const noSkillsFlag = values["no-skills"];
@@ -1290,7 +1302,10 @@ export async function handleHeadlessCommand(
         })
       : undefined;
     const modelForUpdateArgs = personalityOptions?.model ?? model;
-    const updateArgs = getModelUpdateArgs(modelForUpdateArgs);
+    const updateArgs = {
+      ...(getModelUpdateArgs(modelForUpdateArgs) ?? {}),
+      ...(modelSettingsOverride ?? {}),
+    };
     const createOptions = {
       ...(personalityOptions ?? {}),
       model: modelForUpdateArgs,
@@ -1401,6 +1416,14 @@ export async function handleHeadlessCommand(
   // Refresh presets before applying optional model/system-prompt overrides.
 
   if (isResumingAgent) {
+    // --model-settings applies on resume too. Merged on top of whatever base
+    // update args the resume path derives (model preset or --model), so an
+    // explicit override wins.
+    const withOverride = (base: Record<string, unknown> | undefined) => ({
+      ...(base ?? {}),
+      ...(modelSettingsOverride ?? {}),
+    });
+
     if (model) {
       const modelHandle = resolveModel(model);
       if (typeof modelHandle !== "string") {
@@ -1410,8 +1433,25 @@ export async function handleHeadlessCommand(
 
       // Always apply model update - different model IDs can share the same
       // handle but have different settings (e.g., gpt-5.2-medium vs gpt-5.2-xhigh)
-      const updateArgs = getModelUpdateArgs(model);
+      const updateArgs = withOverride(getModelUpdateArgs(model));
       agent = await updateAgentLLMConfig(agent.id, modelHandle, updateArgs);
+    } else if (modelSettingsOverride) {
+      // --model-settings alone: apply it to the agent's current model handle.
+      const currentHandle =
+        typeof agent.model === "string" && agent.model.length > 0
+          ? agent.model
+          : null;
+      if (!currentHandle) {
+        console.error(
+          "Error: --model-settings requires a resolvable current model on the agent.",
+        );
+        process.exit(1);
+      }
+      agent = await updateAgentLLMConfig(
+        agent.id,
+        currentHandle,
+        withOverride(undefined),
+      );
     } else {
       const presetRefresh = getModelPresetUpdateForAgent(agent);
       if (presetRefresh) {

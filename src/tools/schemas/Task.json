@@ -17,6 +17,11 @@
       "type": "string",
       "description": "Optional model to use for this agent. If not specified, inherits from parent. Prefer lighter models for quick, straightforward tasks to minimize cost and latency."
     },
+    "reasoning_effort": {
+      "type": "string",
+      "enum": ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+      "description": "Optional reasoning effort for the subagent's model. If not specified, uses the subagent config's reasoning_effort or the model default."
+    },
     "run_in_background": {
       "type": "boolean",
       "description": "Defaults to true. Set to false only when you must block and wait for the agent's final report inline. Background runs return a task ID/output file and deliver a task notification on completion."

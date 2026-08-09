@@ -9,6 +9,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ModelReasoningSelection } from "@/agent/model";
 import { getBackend } from "@/backend";
 import { getErrorMessage } from "@/utils/error";
 import {
@@ -90,6 +91,8 @@ export interface SubagentConfig {
   recommendedModel: string;
   /** Whether the recommended model came from bundled defaults or user config. */
   recommendedModelSource?: SubagentRecommendedModelSource;
+  /** Reasoning effort for the subagent model (model_settings.reasoning_effort). */
+  reasoningEffort?: ModelReasoningSelection | null;
   /** Skills to auto-load */
   skills: string[];
   /** Whether this subagent should fork the parent conversation before launch. */
@@ -188,6 +191,16 @@ function parseLaunchProfile(
   return launchProfile === "memory-subagent" ? "memory-subagent" : "default";
 }
 
+function parseReasoningEffort(
+  value: string | undefined,
+): ModelReasoningSelection | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === "none" || value === "off") return "none";
+  return ["minimal", "low", "medium", "high", "xhigh", "max"].includes(value)
+    ? (value as ModelReasoningSelection)
+    : null;
+}
+
 function parseBackgroundDefault(background: string | undefined): boolean {
   return background?.toLowerCase() !== "false";
 }
@@ -268,6 +281,9 @@ function applySubagentOverlay(
     recommendedModelSource: hasModel
       ? modelSource
       : inherited.recommendedModelSource,
+    reasoningEffort: hasFrontmatterField(frontmatter, "reasoning_effort")
+      ? parseReasoningEffort(getStringField(frontmatter, "reasoning_effort"))
+      : inherited.reasoningEffort,
     skills: hasFrontmatterField(frontmatter, "skills")
       ? parseSkills(getStringField(frontmatter, "skills"))
       : [...inherited.skills],
@@ -329,6 +345,9 @@ function parseSubagentContent(
     allowedTools: parseTools(getStringField(frontmatter, "tools")),
     recommendedModel: getStringField(frontmatter, "model") || "inherit",
     recommendedModelSource: hasModel ? options.modelSource : undefined,
+    reasoningEffort: parseReasoningEffort(
+      getStringField(frontmatter, "reasoning_effort"),
+    ),
     skills: parseSkills(getStringField(frontmatter, "skills")),
     fork: getStringField(frontmatter, "fork")?.toLowerCase() === "true",
     background: parseBackgroundDefault(

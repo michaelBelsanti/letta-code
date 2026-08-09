@@ -85,6 +85,15 @@ export const CLI_FLAG_CATALOG = {
         'Model ID or handle (e.g., "opus-4.5" or "anthropic/claude-opus-4-5")',
     },
   },
+  "model-settings": {
+    parser: { type: "string" },
+    mode: "headless",
+    help: {
+      argLabel: "<json>",
+      description:
+        "Model settings JSON applied at agent creation (e.g. reasoning_effort)",
+    },
+  },
   embedding: { parser: { type: "string" }, mode: "both" },
   system: {
     parser: { type: "string", short: "s" },

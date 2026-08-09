@@ -50,6 +50,7 @@ interface TaskArgs {
   prompt?: string;
   description?: string;
   model?: string;
+  reasoning_effort?: string; // Reasoning effort for the subagent model (model_settings.reasoning_effort)
   agent_id?: string; // Deploy an existing agent instead of creating new
   conversation_id?: string; // Resume from an existing conversation
   run_in_background?: boolean; // Run the task in background
@@ -82,6 +83,8 @@ export interface SpawnBackgroundSubagentTaskArgs {
   prompt: string;
   description: string;
   model?: string;
+  /** Reasoning effort for the subagent model (model_settings.reasoning_effort). */
+  reasoningEffort?: string;
   /** Replace the subagent's configured system prompt/persona (advanced). */
   systemPromptOverride?: string;
   toolCallId?: string;
@@ -347,6 +350,7 @@ export function spawnBackgroundSubagentTask(
     prompt,
     description,
     model,
+    reasoningEffort,
     systemPromptOverride,
     toolCallId,
     existingAgentId,
@@ -438,6 +442,7 @@ export function spawnBackgroundSubagentTask(
     resolvedParentScope?.conversationId,
     memoryScope,
     systemPromptOverride,
+    reasoningEffort,
   )
     .then(async (result) => {
       await copyGitHubPullRequestTagsFn(
@@ -766,6 +771,7 @@ export async function task(args: TaskArgs): Promise<string> {
       prompt,
       description,
       model,
+      reasoningEffort: args.reasoning_effort,
       toolCallId,
       existingAgentId: effectiveAgentId,
       existingConversationId: effectiveConversationId,
@@ -822,6 +828,9 @@ export async function task(args: TaskArgs): Promise<string> {
       parentAgentIdForSpawn,
       undefined,
       resolvedParentScope?.conversationId,
+      undefined,
+      undefined,
+      args.reasoning_effort,
     );
 
     await copyGitHubPullRequestTags(
