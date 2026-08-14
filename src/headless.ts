@@ -1146,6 +1146,40 @@ export async function handleHeadlessCommand(
     process.exit(1);
   }
 
+  // Register provider mods (e.g. clinepass, umans) before any agent
+  // resolution or creation. Agent model normalization and buildModelSettings
+  // both need mod-registered providers visible; otherwise a mod-provider
+  // handle is mislabeled (e.g. provider_type "openai") or mangled, and the
+  // turn fails. The real adapter is created and reloaded again later with
+  // the resolved agent — reload is idempotent and re-registration is a
+  // same-owner overwrite. The stub agent only feeds the (memfs-off for
+  // stateless sessions) agent mods dir lookup; global provider mods load
+  // regardless.
+  if (!modsDisabled) {
+    try {
+      const earlyModAdapter = createHeadlessModAdapter({
+        agent: {
+          id: specifiedAgentId || ambientAgentId || "headless-early-load",
+        } as AgentState,
+        backend,
+        conversationId: specifiedConversationId ?? "default",
+        permissionMode: startupPermissionMode.mode,
+        disabled: false,
+      });
+      await earlyModAdapter.reload();
+      // Deliberately NOT disposed: its registered providers must stay visible
+      // through agent creation (Priority 3) and normalization. The real
+      // adapter's reload later re-registers the same providers (same-owner
+      // overwrite) and its own dispose cleans them up.
+    } catch (error) {
+      debugLog(
+        "mods",
+        "early provider mod load failed: %s",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
   // Priority 0: --conversation derives agent from conversation ID.
   // "default" is a virtual agent-scoped conversation (not a retrievable conv-*).
   // It requires --agent and should not hit conversations.retrieve().

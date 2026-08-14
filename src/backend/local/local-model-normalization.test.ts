@@ -110,6 +110,18 @@ describe("local model normalization", () => {
     ).toBe("custom-provider/custom-model");
   });
 
+  test("preserves already-prefixed mod handles when the mod is not registered", () => {
+    // A headless child can normalize a stored agent before its provider mods
+    // have loaded (e.g. "clinepass/cline-pass/deepseek-v4-flash"). The handle
+    // already carries the provider prefix, so it must pass through unchanged
+    // instead of being re-prefixed into "clinepass/clinepass/cline-pass/...".
+    expect(
+      normalizeLocalModelHandle("clinepass/cline-pass/deepseek-v4-flash", {
+        provider_type: "clinepass",
+      }),
+    ).toBe("clinepass/cline-pass/deepseek-v4-flash");
+  });
+
   test("projects canonical provider metadata for local agents", async () => {
     const storageDir = await mkdtemp(
       join(tmpdir(), "local-backend-anthropic-llm-config-"),

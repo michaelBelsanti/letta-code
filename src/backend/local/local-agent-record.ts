@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentState } from "@letta-ai/letta-client/resources/agents/agents";
 import { LETTA_CODE_SUBAGENT_TAG } from "@/agent/agent-tags";
 import type { AgentCreateBody } from "@/backend/backend";
+import { resolveRegisteredPiProviderFromModelHandle } from "@/backend/dev/pi-provider-mod-registry";
 import { isRecord } from "@/utils/type-guards";
 import {
   localLlmConfigModelPatch,
@@ -88,14 +89,23 @@ export function createLocalAgentRecord(
   const hidden = normalizeAgentHiddenFlag(bodyRecord.hidden, tags);
   const modelSettings = supportedModelSettingsFromBody(bodyRecord);
   const requestedModel = optionalString(bodyRecord.model) ?? defaultAgentModel;
+  // Registered mod providers are not in the builtin provider table, so a
+  // body carrying only the model handle (e.g. headless --new-agent) would
+  // store no provider_type and the turn could not resolve the provider.
+  const modProvider =
+    resolveRegisteredPiProviderFromModelHandle(requestedModel);
+  const modelSettingsWithProvider =
+    modProvider && typeof modelSettings.provider_type !== "string"
+      ? { ...modelSettings, provider_type: modProvider }
+      : modelSettings;
   return {
     id: `agent-local-${randomUUID()}`,
     name: optionalString(bodyRecord.name) ?? defaultAgentName,
     description: optionalStringOrNull(bodyRecord.description) ?? null,
     system: optionalString(bodyRecord.system) ?? "",
     tags,
-    model: normalizeLocalModelHandle(requestedModel, modelSettings),
-    model_settings: modelSettings,
+    model: normalizeLocalModelHandle(requestedModel, modelSettingsWithProvider),
+    model_settings: modelSettingsWithProvider,
     ...(hidden !== undefined ? { hidden } : {}),
   };
 }
